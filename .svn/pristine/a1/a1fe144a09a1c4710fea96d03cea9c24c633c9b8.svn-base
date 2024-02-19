@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+	<include resource="org/springframework/boot/logging/logback/base.xml"/>
+ 
+ 	<springProfile name="local">
+		<property value="C:/Temp/log/" name="LOG_FILE_PREFIX" />
+ 	</springProfile>
+ 	<springProfile name="prod">
+		<property value="/jb_log/syslog/" name="LOG_FILE_PREFIX" />
+ 	</springProfile>
+ 	<springProfile name="dev">
+		<property value="/jb_log/syslog/" name="LOG_FILE_PREFIX" />
+ 	</springProfile>
+
+   	<appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+		<!-- By default, encoders are assigned the type ch.qos.logback.classic.encoder.PatternLayoutEncoder -->
+		<encoder>
+			<pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-3level %logger{5} - %msg %n</pattern>
+		</encoder>
+	</appender>
+
+<!-- 	<appender name="console" class="org.apache.log4j.ConsoleAppender"> -->
+<!-- 		<layout class="org.apache.log4j.PatternLayout"> -->
+<!-- 			<param name="ConversionPattern" value="%d %5p [%c] %m%n" /> -->
+<!-- 		</layout> -->
+<!-- 	</appender> -->
+	<appender name="dailyRollingFileAppender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<filter class="ch.qos.logback.core.filter.EvaluatorFilter">
+			<evaluator>
+				<expression>return message.contains("mybatis.mapper.user.getJoinInfoList");</expression>
+			</evaluator>
+			<OnMismatch>NEUTRAL</OnMismatch>
+			<OnMatch>DENY</OnMatch>
+		</filter>
+		<prudent>true</prudent>
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_FILE_PREFIX}System.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+			<maxHistory>90</maxHistory>
+			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+				<maxFileSize>10MB</maxFileSize>
+			</timeBasedFileNamingAndTriggeringPolicy>
+		</rollingPolicy>
+ 
+			<param name="encoding" value="UTF-8" />
+		<encoder>
+			<pattern>%d{yyyy:MM:dd HH:mm:ss.SSS} %-5level --- [%thread] %logger{35} : %msg %n</pattern>
+		</encoder>
+	</appender>
+ 
+<!-- 	<logger name="org.springframework.web" level="INFO"/> -->
+<!-- 	<logger name="org.springframework.jndi" level="INFO"/> -->
+
+	<!-- SQL 쿼리 설정 -->
+	<!-- 개발: INFO
+	운영: OFF -->
+	<logger name="jdbc" level="OFF" />
+
+	<logger name="jdbc.sqlonly" level="OFF" />
+	<logger name="jdbc.sqltiming" level="INFO" />
+	<logger name="jdbc.audit" level="OFF" />
+	<logger name="jdbc.resultset" level="OFF" />
+	<logger name="jdbc.resultsettable" level="OFF" />
+	<logger name="jdbc.connection" level="OFF" />
+	<logger name="jdbc.connection" level="OFF" />
+	
+	<!-- ROOT 설정 --> 
+	<!-- 개발:INFO
+	운영:ERROR -->
+	<root level="ERROR">
+<!-- 		<appender-ref ref="console" /> -->
+		<appender-ref ref="dailyRollingFileAppender" />
+	</root>
+</configuration>

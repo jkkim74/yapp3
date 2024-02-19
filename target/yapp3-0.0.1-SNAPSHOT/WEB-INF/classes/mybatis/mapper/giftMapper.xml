@@ -1,0 +1,670 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mybatis.mapper.gift">
+
+	<select id="getBonusData" resultType="BonusData">
+		/* mybatis.mapper.gift.getBonusData : 보너스(프로모션) 데이터 정보를 조회한다. */
+		SELECT 
+			  A.BONUS_ID
+			, A.TITLE
+			, A.DATA_AMT
+			, A.RCV_ST_YMD
+			, A.BONUS_TP
+			, A.RCV_ED_YMD
+			, A.RCV_CNTR_NO
+			, A.COND_PP_CD
+			, A.COND_GIFT_DATA_AMT
+			, A.COND_GIFT_CNT
+			, A.COND_DATUK_DATA_AMT
+			, A.COND_DATUK_CNT
+			, A.COND_INVT_CNT
+			, A.COND_ARRV_ORD
+			, A.REMARKS
+			, A.EXP_YMD
+			, A.REG_DT
+			, A.MOD_DT
+		FROM 
+			TM_BONUS_DATA A
+		WHERE
+				A.BONUS_ID		= #{bonusId}
+	</select>
+	
+
+	<select id="getAutoBonusDataList" resultType="BonusData">
+		/* mybatis.mapper.gift.getAutoBonusDataList : 자동 보너스 대상 데이터 목록을 조회한다. */
+		SELECT 
+			  A.BONUS_ID
+			, A.TITLE
+			, A.DATA_AMT
+			, A.RCV_ST_YMD
+			, A.BONUS_TP
+			, A.RCV_ED_YMD
+			, A.RCV_CNTR_NO
+			, A.COND_PP_CD
+			, A.COND_GIFT_DATA_AMT
+			, A.COND_GIFT_CNT
+			, A.COND_DATUK_DATA_AMT
+			, A.COND_DATUK_CNT
+			, A.COND_INVT_CNT
+			, A.COND_ARRV_ORD
+			, A.REMARKS
+			, A.EXP_YMD
+			, A.REG_DT
+			, A.MOD_DT
+			, CASE WHEN B.RCV_CNTR_NO IS NULL THEN 'N' ELSE 'Y' END		AS RCV_YN
+		FROM 
+			TM_BONUS_DATA A
+		LEFT JOIN
+			TB_BONUS_DATA B
+		ON
+				A.BONUS_ID		= B.BONUS_ID
+			AND A.RCV_CNTR_NO	= #{cntrNo} 
+		WHERE
+			A.BONUS_TP = 'G0003'
+			AND A.USE_YN  = 'Y'
+		ORDER BY A.BONUS_ID
+	</select>
+
+	<select id="getRcvBonusDataList" resultType="BonusData">
+		/* mybatis.mapper.gift.getRcvBonusDataList : 보너스(프로모션) 데이터 수령 목록을 조회한다. */
+		SELECT 
+			  BONUS_ID
+			, RCV_CNTR_NO
+			, DATA_AMT
+			, GIFT_YM
+			, REG_DT
+		FROM 
+			TB_BONUS_DATA A
+		<where>
+			<if test='bonusId != null and bonusId != ""'>
+				AND A.BONUS_ID = #{bonusId}
+			</if>
+			<if test='cntrNo != null and cntrNo != ""'>
+				AND A.RCV_CNTR_NO = #{cntrNo}
+			</if>
+		</where>
+	</select>
+	
+	<insert id="receiveBonusData" parameterType="BonusData">
+		/* mybatis.mapper.gift.receiveBonusData : 보너스 데이터를 수령한다. */
+		INSERT INTO TB_BONUS_DATA
+		(
+			  BONUS_ID
+			, RCV_CNTR_NO
+			, DATA_AMT
+			, GIFT_YM
+			, REG_DT
+		)
+		SELECT
+			  BONUS_ID
+			, #{cntrNo}
+			, DATA_AMT
+			, TO_CHAR(now(), 'YYYYMM')
+			, now()
+		FROM
+			TM_BONUS_DATA
+		WHERE
+			BONUS_ID	= #{bonusId}
+	</insert>
+	
+	<insert id="insertGiftData" parameterType="GiftData">
+	/* mybatis.mapper.gift.insertGiftData : 선물하기 데이터를 추가한다. */
+		INSERT INTO TB_GIFT
+		(
+			  SND_CNTR_NO
+			, SND_MOBILE_NO
+			, SND_USER_NM
+			, RCV_CNTR_NO
+			, RCV_MOBILE_NO
+			, RCV_USER_NM
+			, DATA_AMT
+			, RCV_CONFIRM_YN
+			, GIFT_YM
+			, REG_DT
+			, MOD_DT
+		)
+		VALUES (
+			  #{sndCntrNo}
+			, #{sndMobileNo}
+			, #{sndUserNm}
+			, #{rcvCntrNo}
+			, #{rcvMobileNo}
+			, #{rcvUserNm}
+			, #{dataAmt}
+			, 'N'
+			, TO_CHAR(now(), 'YYYYMM')
+			, now()
+			, now()
+		)
+	</insert>
+	
+	<select id="getGiftDataList" resultType="GiftData">
+		/* mybatis.mapper.gift.getGiftDataList : 선물 목록을 조회한다. */
+		SELECT
+			  DISTINCT A.SND_CNTR_NO
+			, A.SND_MOBILE_NO
+			, A.SND_USER_NM
+			, A.RCV_CNTR_NO
+			, A.RCV_MOBILE_NO
+			, A.RCV_USER_NM
+			, A.RCV_CONFIRM_YN
+			,COALESCE(B.REQ_RCV_YN, 'N') AS REQ_RCV_YN
+		FROM 
+			TB_GIFT A
+		LEFT JOIN TB_USER B
+ 				ON A.RCV_CNTR_NO = B.CNTR_NO
+		<where>
+			<if test='sndCntrNo != null and sndCntrNo != ""'>
+				AND	A.SND_CNTR_NO		= #{sndCntrNo}
+			</if>
+			<if test='rcvCntrNo != null and rcvCntrNo != ""'>
+				AND	A.RCV_CNTR_NO		= #{rcvCntrNo}
+			</if>
+			<if test='giftYm != null and giftYm != ""'>
+				AND	A.GIFT_YM			= #{giftYm}
+			</if>
+			<if test='rcvYn != null and rcvYn != ""'>
+				AND	A.RCV_YN			= #{rcvYn}
+			</if>
+			<if test='deviceChgDt != null and deviceChgDt != ""'>
+				AND	TO_CHAR(A.REG_DT, 'YYYYMMDDHH24MI') >= #{deviceChgDt}
+			</if>
+		</where>
+		LIMIT 5
+<!-- 		ORDER BY -->
+<!-- 				A.REG_DT DESC -->
+	</select>
+
+	<select id="getGiftInfoList" resultType="GiftData">
+		/* mybatis.mapper.gift.getGiftInfoList :  선물정보를 조회한다. */
+		SELECT
+			  A.SEQ
+			, A.SND_CNTR_NO
+			, A.SND_MOBILE_NO
+			, A.SND_USER_NM
+			, A.RCV_CNTR_NO
+			, A.RCV_MOBILE_NO
+			, A.RCV_USER_NM
+			, A.DATA_AMT
+			, A.GIFT_YM
+			, A.REG_DT
+		FROM 
+			TB_GIFT A
+		<where>
+			<if test='sndCntrNo != null and sndCntrNo != ""'>
+				AND	A.SND_CNTR_NO		= #{sndCntrNo}
+			</if>
+			<if test='rcvCntrNo != null and rcvCntrNo != ""'>
+				AND	A.RCV_CNTR_NO		= #{rcvCntrNo}
+			</if>
+			<if test='giftYm != null and giftYm != ""'>
+				AND	A.GIFT_YM			= #{giftYm}
+			</if>
+		</where>
+		ORDER BY REG_DT DESC
+	</select>
+
+	<select id="getPullInfoList" resultType="GiftData">
+		/* mybatis.mapper.gift.getPullInfoList : 데이터박스 꺼내기 정보를 조회한다.*/
+		SELECT
+			  CNTR_NO			AS RCV_CNTR_NO
+			, DATA_AMT
+			, PULL_YM 			AS GIFT_YM
+			, REG_DT
+		FROM
+			TB_DBOX_PULL_INFO
+		WHERE
+				CNTR_NO		= #{cntrNo}
+			AND PULL_YM		= TO_CHAR(now(), 'YYYYMM')::bpchar
+	</select>
+
+	<select id="getRcvGiftDataList" resultType="GiftData">
+		/* mybatis.mapper.gift.getRcvGiftDataList : 받은 선물 목록을 조회한다. */
+		SELECT
+			  A.SEQ
+			, A.SND_CNTR_NO
+			, A.SND_MOBILE_NO
+			, A.SND_USER_NM
+			, A.RCV_CNTR_NO
+			, A.RCV_MOBILE_NO
+			, A.RCV_USER_NM
+			, A.DATA_AMT
+			, A.GIFT_YM
+			, A.REG_DT
+		FROM 
+			TB_GIFT A
+		WHERE
+				A.RCV_CNTR_NO			= #{rcvCntrNo}
+			AND A.RCV_CONFIRM_YN		= 'N'
+	</select>
+	
+	<insert id="insertDataReq" parameterType="BonusData">
+		/* mybatis.mapper.gift.insertDataReq : 조르기를 요청 정보를 추가한다. */
+		INSERT INTO TB_DATA_REQ
+		(
+			  SND_CNTR_NO
+			, SND_MOBILE_NO
+			, SND_USER_NM
+			, RCV_CNTR_NO
+			, RCV_MOBILE_NO
+			, DATA_AMT
+			, RCV_CONFIRM_YN
+			, REQ_YM
+			, REG_DT
+			, MOD_DT
+		)
+		VALUES (
+			  #{sndCntrNo}
+			, #{sndMobileNo}
+			, #{sndUserNm}
+			, #{rcvCntrNo}
+			, #{rcvMobileNo}
+			, #{dataAmt}
+			, 'N'
+			, TO_CHAR(now(), 'YYYYMM')
+			, now()
+			, now()
+		)
+	</insert>
+	
+	<select id="getDataReqList" resultType="GiftData">
+		/* mybatis.mapper.gift.getDataReqList : 데이터 조르기 목록을 조회한다. */
+		SELECT
+			  A.SEQ
+			, A.SND_CNTR_NO
+			, A.SND_MOBILE_NO
+			, A.SND_USER_NM
+			, A.RCV_CNTR_NO
+			, A.RCV_MOBILE_NO
+			, A.DATA_AMT
+			, A.REQ_YM
+			, A.REG_DT
+		FROM 
+			TB_DATA_REQ A
+		WHERE
+				A.RCV_CNTR_NO			= #{rcvCntrNo}
+			AND A.RCV_CONFIRM_YN		= 'N'
+	</select>
+
+	<select id="getDataReqInfoList" resultType="GiftData">
+		/* mybatis.mapper.gift.getDataReqInfoList : 데이터 조르기 목록을 조회한다. */
+		SELECT
+			  A.SEQ
+			, A.SND_CNTR_NO
+			, A.SND_MOBILE_NO
+			, A.SND_USER_NM
+			, A.RCV_CNTR_NO
+			, A.RCV_MOBILE_NO
+			, A.RCV_CONFIRM_YN
+			, A.DATA_AMT
+			, A.REQ_YM
+			, A.REG_DT
+		FROM 
+			TB_DATA_REQ A
+		<where>
+			<if test='sndCntrNo != null and sndCntrNo != ""'>
+				AND	A.SND_CNTR_NO		= #{sndCntrNo}
+			</if>
+			<if test='rcvCntrNo != null and rcvCntrNo != ""'>
+				AND	A.RCV_CNTR_NO		= #{rcvCntrNo}
+			</if>
+		</where>
+		ORDER BY REG_DT DESC
+	</select>
+
+	<select id="getAccmGiftDataList" resultType="AccmGiftData">
+		/* mybatis.mapper.gift.getAccmGiftDataList : 누적 선물 데이터 목록을 조회한다. */
+		SELECT 
+			  A.DATA_AMT
+			, 'G0001'				AS	REQ_TP
+			, A.REG_DT
+		FROM 
+			TB_GIFT A
+		WHERE
+				A.SND_CNTR_NO		= #{sndCntrNo}
+			AND	A.GIFT_YM			= TO_CHAR(now(), 'YYYYMM')::bpchar
+		UNION ALL
+		SELECT 
+			  A.DATUK_AMT
+			, 'G0002'				AS	REQ_TP
+			, A.REG_DT
+		FROM 
+			TB_DATUK A
+		WHERE
+				A.CNTR_NO			= #{sndCntrNo}
+			AND	A.DATUK_YM			= TO_CHAR(now(), 'YYYYMM')::bpchar
+		
+	</select>
+	
+	<select id="getAccmGiftDataAllList" resultType="AccmGiftData">
+		/* mybatis.mapper.gift.getAccmGiftDataAllList : 전체 누적 선물 데이터 목록을 조회한다. */
+		SELECT 
+			T.DATA_AMT	AS SND_DATA_AMT
+			,TO_CHAR(T.REG_DT, 'YYYYMMDDHHmmss')	AS SND_DT
+		FROM 
+		(
+			SELECT 
+				  A.DATA_AMT
+				, A.REG_DT
+			FROM 
+				TB_GIFT A
+			WHERE
+					A.SND_CNTR_NO		= #{cntrNo}
+				AND A.SND_CNTR_NO != A.RCV_CNTR_NO
+			UNION ALL
+			SELECT 
+				  A.DATUK_AMT
+				, A.REG_DT
+			FROM 
+				TB_DATUK A
+			WHERE
+					A.CNTR_NO			= #{cntrNo}
+		) T
+		ORDER BY T.REG_DT
+	</select>
+
+	<update id="updateRcvConfirmGift" parameterType="Map">
+		/* mybatis.mapper.gift.updateRcvConfirmGift : 선물 데이터 수령 확인처리 한다. */
+		UPDATE TB_GIFT
+			SET   RCV_CONFIRM_YN		= 'Y'
+				, MOD_DT				= now()
+		WHERE
+				RCV_CNTR_NO		= #{rcvCntrNo}
+			AND RCV_CONFIRM_YN		= 'N'
+	</update>
+	
+	<update id="updateRcvConfirmDataReq" parameterType="Map">
+		/* mybatis.mapper.gift.updateRcvConfirmDataReq : 조르기 데이터 수신 확인처리 한다. */
+		UPDATE TB_DATA_REQ
+			SET   RCV_CONFIRM_YN		= 'Y'
+				, MOD_DT				= now()
+		WHERE
+				RCV_CNTR_NO		= #{rcvCntrNo}
+			AND RCV_CONFIRM_YN		= 'N'
+	</update>
+	
+	<select id="getGiftNumInfo" resultType="GiftNum">
+		/* mybatis.mapper.gift.getGiftNumInfo : 해당월 기준 선물한 횟수, 용량을 조회한다. */
+		SELECT 
+			  COALESCE(SUM(GIFT_CNT), 0)	AS GIFT_CNT
+			, COALESCE(SUM(GIFT_AMT), 0)	AS GIFT_AMT
+			, MAX(REG_DT)					AS MAX_REG_DT
+		FROM 
+		(
+			SELECT 
+				  1				AS GIFT_CNT
+				, A.DATA_AMT	AS GIFT_AMT
+				, A.REG_DT
+			FROM 
+				TB_GIFT A
+			WHERE
+					A.SND_CNTR_NO		= #{cntrNo}
+				AND A.GIFT_YM			= TO_CHAR(now(), 'YYYYMM')::bpchar
+			UNION ALL
+			SELECT
+				  1				AS GIFT_CNT
+				, DATUK_AMT		AS GIFT_AMT
+				, REG_DT
+			FROM
+				TB_DATUK A
+			WHERE
+					A.CNTR_NO			= #{cntrNo}
+				AND A.DATUK_YM			= TO_CHAR(now(), 'YYYYMM')::bpchar
+		) T
+	</select>
+
+	<select id="getGiftAllNumInfo" resultType="GiftNum">
+		/* mybatis.mapper.gift.getGiftAllNumInfo : 전체 선물한 횟수, 용량을 조회한다. */
+		SELECT 
+			  COALESCE(SUM(GIFT_CNT), 0)	AS GIFT_CNT
+			, COALESCE(SUM(GIFT_AMT), 0)	AS GIFT_AMT
+			, MAX(REG_DT)					AS MAX_REG_DT
+		FROM 
+		(
+			SELECT 
+				  1				AS GIFT_CNT
+				, A.DATA_AMT	AS GIFT_AMT
+				, A.REG_DT
+			FROM 
+				TB_GIFT A
+			WHERE
+					A.SND_CNTR_NO		= #{cntrNo}
+			UNION ALL
+			SELECT
+				  1				AS GIFT_CNT
+				, DATUK_AMT		AS GIFT_AMT
+				, REG_DT
+			FROM
+				TB_DATUK A
+			WHERE
+					A.CNTR_NO			= #{cntrNo}
+		) T
+	</select>
+
+	<select id="getGiftNumALLInfo" resultType="GiftNum">
+		/* mybatis.mapper.gift.getGiftNumALLInfo : 누적 선물한 횟수, 용량을 조회한다. */
+		SELECT 
+			  COALESCE(SUM(GIFT_CNT), 0)	AS GIFT_CNT
+			, COALESCE(SUM(GIFT_AMT), 0)	AS GIFT_AMT
+			, MAX(REG_DT)					AS MAX_REG_DT
+		FROM 
+		(
+			SELECT 
+				  1				AS GIFT_CNT
+				, A.DATA_AMT	AS GIFT_AMT
+				, A.REG_DT
+			FROM 
+				TB_GIFT A
+			WHERE
+					A.SND_CNTR_NO		= #{cntrNo}
+			UNION ALL
+			SELECT
+				  1				AS GIFT_CNT
+				, DATUK_AMT		AS GIFT_AMT
+				, REG_DT
+			FROM
+				TB_DATUK A
+			WHERE
+					A.CNTR_NO			= #{cntrNo}
+		) T
+	</select>
+
+	<select id="getGiftNumInfoByGiftTypeList" resultType="GiftNum">
+		/* mybatis.mapper.gift.getGiftNumInfoByGiftTypeList : 선물타입별 선물한 횟수, 용량을 조회한다. */
+		SELECT 
+			  GIFT_TP
+			, COALESCE(SUM(GIFT_CNT), 0)	AS GIFT_CNT
+			, COALESCE(SUM(GIFT_AMT), 0)	AS GIFT_AMT
+		FROM 
+		(
+			SELECT 
+				  1				AS GIFT_CNT
+				, A.DATA_AMT	AS GIFT_AMT
+				, 'G0001'		AS GIFT_TP
+			FROM 
+				TB_GIFT A
+			WHERE
+					A.SND_CNTR_NO		= #{cntrNo}
+				AND A.GIFT_YM			= TO_CHAR(now(), 'YYYYMM')::bpchar
+			UNION ALL
+			SELECT
+				  1				AS GIFT_CNT
+				, DATUK_AMT		AS GIFT_AMT
+				, 'G0002'		AS GIFT_TP
+			FROM
+				TB_DATUK A
+			WHERE
+					A.CNTR_NO			= #{cntrNo}
+				AND A.DATUK_YM			= TO_CHAR(now(), 'YYYYMM')::bpchar
+		) T
+		GROUP BY
+			T.GIFT_TP
+	</select>
+
+	<select id="getGiftRcvNumInfo" resultType="GiftNum">
+		/* mybatis.mapper.gift.getGiftRcvNumInfo : 선물 받은 횟수, 용량을 조회한다. */
+		SELECT 
+			  COALESCE(SUM(GIFT_CNT), 0)	AS GIFT_CNT
+			, COALESCE(SUM(GIFT_AMT), 0)	AS GIFT_AMT
+		FROM 
+		(
+			SELECT 
+				  1				AS GIFT_CNT
+				, A.DATA_AMT	AS GIFT_AMT
+			FROM 
+				TB_GIFT A
+			WHERE
+					A.RCV_CNTR_NO		= #{cntrNo}
+				AND A.GIFT_YM			= TO_CHAR(now(), 'YYYYMM')::bpchar
+			UNION ALL
+			SELECT
+				  1				AS GIFT_CNT
+				, RCV_AMT		AS GIFT_AMT
+			FROM
+				TB_DATUK_RCV A
+			WHERE
+					A.RCV_CNTR_NO		= #{cntrNo}
+				AND A.RCV_DATUK_YM		= TO_CHAR(now(), 'YYYYMM')::bpchar
+		) T
+	</select>
+
+	<select id="getNextArrvOrdNo" resultType="int">
+		/* mybatis.mapper.gift.getNextArrvOrdNo : 보너스 데이터의 선착순 수령 번호를 조회한다. */
+		WITH WT_MAX_RCV_NO AS
+		(
+			SELECT 
+				  COALESCE(COUNT(BONUS_ID), 0) + 1		AS MAX_RCV_NO
+			FROM 
+				TB_BONUS_DATA A
+			WHERE
+				A.BONUS_ID		= #{bonusId}
+		)
+		SELECT
+			CASE WHEN MAX_RCV_NO > #{condArrvOrd} THEN -1 ELSE MAX_RCV_NO END	AS MAX_RCV_NO
+		FROM
+			WT_MAX_RCV_NO A
+	</select>
+
+	<select id="getAutoBonusDataRcvInfo" resultType="AutoBonusData">
+		/* mybatis.mapper.gift.getAutoBonusDataRcvInfo : 자동 보너스 데이터의 수신여부정보를 조회한다. */
+		SELECT 
+			PRESENTDATA.CNTR_NO
+			,PRESENTDATA.DATA_AMT AS SND_DATA_AMT
+			,PRESENTDATA.DATA_AMT/500 AS RCV_DATA_CNT
+			,BONUSDATA.DATA_AMT AS BONUS_DATA_AMT
+			,COALESCE(BONUSDATA.DATA_CNT, 0) AS BONUS_DATA_CNT
+		FROM (
+				SELECT 
+					A.CNTR_NO
+					,SUM(A.DATA_AMT) AS DATA_AMT
+				FROM (
+						SELECT 
+							SND_CNTR_NO AS CNTR_NO
+							,DATA_AMT
+						FROM TB_DATA_REQ 
+						WHERE SND_CNTR_NO = #{cntrNo}
+						AND SND_CNTR_NO != RCV_CNTR_NO
+						UNION ALL
+						SELECT 
+							CNTR_NO
+							,DATUK_AMT AS DATA_AMT
+						FROM TB_DATUK 
+						WHERE CNTR_NO = #{cntrNo}
+				) A
+				GROUP BY A.CNTR_NO
+			) AS PRESENTDATA
+			LEFT JOIN 
+			(
+				SELECT 
+					RCV_CNTR_NO AS CNTR_NO
+					,SUM(DATA_AMT) AS DATA_AMT
+					,COUNT(RCV_CNTR_NO) AS DATA_CNT
+				FROM TM_BONUS_DATA
+				WHERE RCV_CNTR_NO = #{cntrNo}
+				AND BONUS_TP = 'G0003'
+				GROUP BY RCV_CNTR_NO
+				
+				) AS BONUSDATA
+			ON PRESENTDATA.CNTR_NO = BONUSDATA.CNTR_NO
+	</select>
+	
+	<insert id="insertBonusData" parameterType="BonusData">
+	/* mybatis.mapper.gift.insertBonusData : 보너스 데이터를 추가한다. */
+		INSERT INTO TM_BONUS_DATA
+		(
+			  BONUS_ID
+			, TITLE
+			, DATA_AMT
+			, BONUS_TP
+			, RCV_ST_YMD
+			, RCV_ED_YMD
+			, RCV_CNTR_NO
+			, REMARKS
+			, REG_USER_ID
+			, REG_DT
+			, MOD_USER_ID
+			, MOD_DT
+		)
+		VALUES (
+			'G0003'||#{bonusId}||TO_CHAR(now(), 'YYYYMMDD')
+			, #{title}
+			, #{dataAmt}
+			, 'G0003'
+			, TO_CHAR(now(), 'YYYYMMDD')
+			, '99991231'
+			, #{rcvCntrNo}
+			, #{remarks}
+			, 'admin'
+			, now()
+			, 'admin'
+			, now()
+		)
+	</insert>
+
+	<select id="checkGiftPw" resultType="int">
+		/* mybatis.mapper.gift.checkGiftPw : 선물하기 비번를 체크한다. */
+		SELECT
+			count(CNTR_NO) as pw_no
+		FROM
+			TM_GIFT_PW
+		WHERE 
+			CNTR_NO = #{cntrNo}
+			<if test='giftPw != null and giftPw != ""'>
+			AND	GIFT_PW		= #{giftPw}
+			</if>
+	</select>
+
+	<update id="updateGiftPw" parameterType="Map">
+		/* mybatis.mapper.gift.updateGiftPw : 선물하기 비번를 수정한다. */
+		UPDATE TM_GIFT_PW
+			SET   GIFT_PW		= #{giftPw}
+				, MOD_DT		= now()
+		WHERE
+				CNTR_NO		= #{cntrNo}
+	</update>
+
+	<insert id="insertGiftPw" parameterType="BonusData">
+	/* mybatis.mapper.gift.insertGiftPw : 선물하기 비번를 추가한다. */
+		INSERT INTO TM_GIFT_PW
+		(
+			CNTR_NO
+			, GIFT_PW
+			, REG_DT
+			, MOD_DT
+		)
+		VALUES (
+			#{cntrNo}
+			, #{giftPw}
+			, now()
+			, now()
+		)
+	</insert>
+	
+	<delete id="deleteGiftPw" parameterType="Map">
+		/* mybatis.mapper.gift.deleteGiftPw : 선물하기 비번를 삭제한다. */
+		DELETE FROM 
+			TM_GIFT_PW
+		WHERE
+				CNTR_NO		= #{cntrNo}
+	</delete>
+</mapper>

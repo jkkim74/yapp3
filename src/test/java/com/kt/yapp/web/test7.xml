@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+    <Header xmlns:ns1="http://bizhub.kt.com" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"
+            xmlns="http://schemas.xmlsoap.org/soap/envelope/">
+        <ns1:commonHeader xmlns="">
+            <ns1:appName>NBSS_ARO</ns1:appName>
+            <ns1:svcName>NIFE_NBCC_LINA_S_1600_00</ns1:svcName>
+            <ns1:fnName>NIFE_NBCC_LINA_S_1600_00</ns1:fnName>
+            <ns1:globalNo>cfac0d74b7614f8fa2be192e695148c9</ns1:globalNo>
+            <ns1:chnlType>YD</ns1:chnlType>
+            <ns1:trFlag>R</ns1:trFlag>
+            <ns1:trDate>20230707</ns1:trDate>
+            <ns1:trTime>094908</ns1:trTime>
+            <ns1:clntIp>10.217.41.182</ns1:clntIp>
+            <ns1:userId>91192332</ns1:userId>
+            <ns1:orgId>SPT8050</ns1:orgId>
+            <ns1:cmpnCd>KT</ns1:cmpnCd>
+            <ns1:srcId>SRC_RETRIEVEBIGICHARGBLNC</ns1:srcId>
+            <ns1:lgDateTime>20230707094908</ns1:lgDateTime>
+            <ns1:responseType>S</ns1:responseType>
+            <ns1:responseCode>SFL_00001</ns1:responseCode>
+            <ns1:responseTitle>System Error - IF_ID:NIFE_NBCC_LINA_S_1600_00</ns1:responseTitle>
+            <ns1:responseBasc>잠시 후 재처리하여 주십시오. 동일 현상 발생시 ISC로 문의해 주십시오.</ns1:responseBasc>
+            <ns1:responseDtal>Process
+                (flow[nbss.bcc.ifi.r_NBCC_WS_IN_01_EP_002.r_NBCC_WS_IN_01_EP_002.l_NIFE_NBCC_LINA_S_1600_00:SVCFL_01]
+                process[583911]) timed out
+            </ns1:responseDtal>
+            <ns1:responseSystem>GW</ns1:responseSystem>
+        </ns1:commonHeader>
+    </Header>
+    <soapenv:Body>
+        <biz:service_response xmlns:biz="http://bizhub.kt.com">
+            <biz:bizHeader>
+                <biz:orderId>orderId</biz:orderId>
+                <biz:cbSvcName>/BCC/PipelineSVC/NPCR/PL_PiaAdm</biz:cbSvcName>
+                <biz:cbFnName>retrieveBigiChargBlnc</biz:cbFnName>
+            </biz:bizHeader>
+            <biz:BigiResSubBody>
+                <biz:rpyCd/>
+                <biz:basAlNum/>
+                <biz:rcvAlNum/>
+                <biz:freeSmsAlNum/>
+                <biz:apdChargAlNum/>
+                <biz:autoUlmtAlNum/>
+                <biz:videAlNum/>
+                <biz:dataAlNum/>
+                <biz:cfwdAlNum/>
+                <biz:ipChargUlmtAlNum/>
+                <biz:usePosblSmsCascnt/>
+                <biz:dataRmndQnt/>
+                <biz:mtpRmndQnt/>
+                <biz:otmpackRmndQnt/>
+                <biz:kakaopackRmndQnt/>
+                <biz:ebsRmndQnt/>
+                <biz:cntrStatCd/>
+                <biz:efctStDate/>
+                <biz:alCoupSvcNo/>
+                <biz:alTrmTmscnt/>
+            </biz:BigiResSubBody>
+        </biz:service_response>
+    </soapenv:Body>
+</soapenv:Envelope>

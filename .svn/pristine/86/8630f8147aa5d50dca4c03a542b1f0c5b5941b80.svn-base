@@ -1,0 +1,593 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+ * yfriendsMapper.xml
+ * 
+ * @author kibon.kim
+ * @since 2020. 8. 26.
+ * @version 1.0
+ * 
+ * Modification Information
+ * Mod Date		Modifier		Description
+ * ========================================
+ * 2020. 8. 26.	min 			yfriends 기능 
+ * Copyright (c) 2018 KTDS, Inc. All Rights Reserved
+ -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mybatis.mapper.yfriends">
+	<select id="getYfriendsMenuList" resultType="YfriendsMenu">
+		/* mybatis.mapper.yfriends.getYfriendsMenuList : 와이프렌즈 메뉴 록록을 조회한다. */
+		SELECT 
+			  A.EM_SEQ
+			, A.EVT_SEQ
+			, A.MENU_NAME
+			, A.USE_YN
+			, A.ANDRD_USE_YN
+			, A.IOS_USE_YN
+			, A.CALLPLAN_YN
+			, A.REG_DT
+			, A.MOD_DT
+			, CASE WHEN TO_CHAR(NOW(), 'YYYYMMDDHH24MI') BETWEEN E.EVT_START_DT AND E.EVT_END_DT THEN 'Y' ELSE 'N' END AS END_YN
+			, E.EVT_TYPE
+			, A.MENU_URL
+			, A.EVENT_DETAIL
+			, B.EM_SEQ
+			, CASE 
+				WHEN B.EM_SEQ IS NULL THEN 'N' 
+				WHEN TO_CHAR(NOW(), 'YYYYMMDDHH24MI') <![CDATA[ < ]]> E.EVT_START_DT OR TO_CHAR(NOW(), 'YYYYMMDDHH24MI') <![CDATA[ > ]]> E.EVT_END_DT THEN 'N'
+				WHEN (SELECT A1.ETR_SEQ FROM TB_ENTRY_INFO A1 WHERE A1.EVT_SEQ = A.EVT_SEQ AND A1.RECV_CNTR_NO = #{cntrNo}) IS NOT NULL THEN 'N'
+				WHEN (SELECT MAX(A2.REW_SEQ) FROM TB_REWARD_INFO A2 INNER JOIN TB_GIFT_ISSUE_INFO A3 ON A2.ISSUE_SEQ = A3.ISSUE_SEQ AND A.EVT_SEQ = A3.EVT_SEQ WHERE A2.CNTR_NO = #{cntrNo}) IS NOT NULL THEN 'N'
+				ELSE 'Y' 
+			END AS NEW_MENU_YN
+			, (SELECT A4.ETR_SEQ FROM TB_ENTRY_INFO A4 WHERE A4.EVT_SEQ = A.EVT_SEQ AND A4.RECV_CNTR_NO = #{cntrNo}) AS ETR_SEQ
+		FROM 
+			TB_YFRIENDS_MENU_INFO A
+		INNER JOIN TB_EVENT_MASTER E ON A.EVT_SEQ = E.EVT_SEQ
+		LEFT OUTER JOIN 
+		(
+			SELECT AB.EM_SEQ
+			FROM TB_YFRIENDS_ROOM_JOIN AA 
+			INNER JOIN TB_YFRIENDS_ROOM AB ON AA.RM_SEQ = AB.RM_SEQ AND AB.DEL_YN = 'N'
+			WHERE AA.JOIN_CNTR_NO = #{cntrNo}
+			AND AA.DEL_YN = 'N'
+		) B ON A.EM_SEQ = B.EM_SEQ
+		WHERE A.USE_YN = 'Y'
+		AND E.EVT_TYPE = 'G0004'
+		AND TO_CHAR(NOW(), 'YYYYMMDDHH24MI') BETWEEN A.MENU_START_DT AND A.MENU_END_DT
+		AND A.USE_YN = 'Y'
+		<if test='andrdUseYn != null and andrdUseYn != ""'>
+		AND A.ANDRD_USE_YN		= 'Y'
+		</if>
+		<if test='iosUseYn != null and iosUseYn != ""'>
+		AND A.IOS_USE_YN		= 'Y'
+		</if>
+		<if test='adminYn == "N"'>
+			AND (E.EVT_TEST_YN  NOT IN('Y') OR E.EVT_TEST_YN IS NULL)
+		</if>
+		ORDER BY E.EVT_TYPE ASC
+	</select>
+	
+	<select id="getEventMenu" resultType="YfriendsMenu">
+		/* mybatis.mapper.yfriends.getEventMenu : 이벤트 메뉴 정보을 조회한다. */
+		SELECT 
+			  A.EM_SEQ
+			, A.EVT_SEQ
+			, A.MENU_NAME
+			, A.USE_YN
+			, A.ANDRD_USE_YN
+			, A.IOS_USE_YN
+			, A.CALLPLAN_YN AS CALLPLAN_YN
+			, A.AGE_START
+			, A.AGE_END
+			, A.MAX_ROOM_CNT
+			, A.REG_DT
+			, A.MOD_DT
+			, A.EVENT_DETAIL
+			, E.GIFT_OFFER_TYPE
+			, (CASE WHEN TO_CHAR(NOW(), 'YYYYMMDDHH24MI') BETWEEN E.EVT_START_DT AND E.EVT_END_DT THEN 'N' ELSE 'Y' END) AS END_YN
+			, A.DTL_TITLE
+			, A.DTL_ROOM_TITLE
+		FROM 
+			TB_YFRIENDS_MENU_INFO A
+		INNER JOIN TB_EVENT_MASTER E
+			ON A.EVT_SEQ = E.EVT_SEQ
+		WHERE A.USE_YN = 'Y'
+		<if test='endYn == "Y"'>
+		AND E.USE_YN 		= 'Y'
+		</if>
+		AND A.EVT_SEQ		= #{evtSeq}
+	</select>
+	
+	<select id="getYfriendsInfo" resultType="YfriendsInfo">
+		/* mybatis.mapper.yfriends.getYfriendsInfo : Y프렌즈 정보를 조회한다. */
+		SELECT 
+			  A.EVT_SEQ
+			, A.EM_SEQ
+			, A.MENU_NAME
+			, A.MAX_ROOM_CNT
+			, A.REG_DT
+			, A.MOD_DT
+		FROM 
+			TB_YFRIENDS_MENU_INFO A
+		WHERE A.USE_YN = 'Y'
+		AND A.EVT_SEQ = #{evtSeq} 
+	</select>
+
+	<select id="getRoomInfoList" resultType="RoomInfo">
+		/* mybatis.mapper.yfriends.getRoomInfoList : 방 록록을 조회한다. */
+		SELECT 
+			A.EM_SEQ
+			, A.MENU_NAME
+			, TE.EVT_LOGO_IMG
+			, A.MAX_ROOM_CNT
+			, B.RM_SEQ
+			, B.INVITED_FNSH_YN
+			, B.JOIN_FNSH_YN
+			, B.MAX_JOIN_CNT
+			, B.JOIN_CNT
+			, 'JN001' AS JOIN_TYPE
+		FROM 
+			TB_YFRIENDS_MENU_INFO A
+		INNER JOIN TB_EVENT_MASTER TE
+			ON A.EVT_SEQ = TE.EVT_SEQ 
+		LEFT OUTER JOIN 
+			(
+			SELECT 
+				A.EM_SEQ
+				, (SELECT COUNT(1) FROM tb_yfriends_room_join RJ WHERE RJ.RM_SEQ = B.RM_SEQ AND RJ.DEL_YN = 'N') AS JOIN_CNT
+				, MAX(A.MAX_JOIN_CNT) AS MAX_JOIN_CNT
+				, MAX(A.RM_SEQ) AS RM_SEQ
+				, MAX(A.INVITED_FNSH_YN) AS INVITED_FNSH_YN
+				, MAX(A.JOIN_FNSH_YN) AS JOIN_FNSH_YN
+			FROM 
+				TB_YFRIENDS_ROOM A
+				INNER JOIN TB_YFRIENDS_ROOM_JOIN B ON	A.RM_SEQ = B.RM_SEQ AND B.DEL_YN = 'N'
+			WHERE A.DEL_YN = 'N'
+			    AND B.JOIN_TYPE = 'JN001' 
+			    AND B.JOIN_CNTR_NO = #{joinCntrNo}
+			    AND B.DEL_YN = 'N'
+				GROUP BY A.EM_SEQ, B.RM_SEQ
+			) B
+			ON	A.EM_SEQ	= B.EM_SEQ
+		WHERE A.USE_YN = 'Y' AND A.EVT_SEQ		= #{evtSeq}
+		UNION ALL
+		SELECT
+			T.EM_SEQ
+			, T.MENU_NAME
+			, MAX(TE.EVT_LOGO_IMG) AS EVT_LOGO_IMG
+			, T.MAX_ROOM_CNT
+			, MAX(A.RM_SEQ) AS RM_SEQ
+			, MAX(A.INVITED_FNSH_YN) AS INVITED_FNSH_YN
+			, MAX(A.JOIN_FNSH_YN) AS JOIN_FNSH_YN
+			, MAX(A.MAX_JOIN_CNT) AS MAX_JOIN_CNT
+			, (SELECT COUNT(1) FROM tb_yfriends_room_join RJ WHERE RJ.RM_SEQ = B.RM_SEQ AND RJ.DEL_YN = 'N') AS JOIN_CNT
+			, 'JN002' AS JOIN_TYPE
+		FROM 
+			TB_YFRIENDS_MENU_INFO T
+		INNER JOIN TB_EVENT_MASTER TE
+			ON T.EVT_SEQ = TE.EVT_SEQ 
+		INNER JOIN TB_YFRIENDS_ROOM A
+			ON T.EM_SEQ = A.EM_SEQ
+		INNER JOIN TB_YFRIENDS_ROOM_JOIN B ON	A.RM_SEQ = B.RM_SEQ AND B.DEL_YN = 'N'
+		WHERE A.DEL_YN = 'N' AND T.EVT_SEQ		= #{evtSeq}
+			AND T.USE_YN = 'Y'
+			AND B.JOIN_TYPE = 'JN002' 
+			AND B.JOIN_CNTR_NO = #{joinCntrNo}
+			AND B.DEL_YN = 'N'
+		GROUP BY T.EM_SEQ, B.RM_SEQ
+	</select>
+
+	<select id="getJoinCount" resultType="RoomChkInfo">
+		/* mybatis.mapper.yfriends.getJoinCount : 참여횟수를 조회한다. */
+		SELECT 
+			SUM(CASE WHEN A.RM_SEQ = #{rmSeq} THEN 1 ELSE 0 END) AS RM_CNT
+		FROM TB_YFRIENDS_ROOM_JOIN A
+		INNER JOIN TB_YFRIENDS_ROOM B ON A.RM_SEQ = B.RM_SEQ AND B.DEL_YN = 'N'
+		WHERE JOIN_CNTR_NO = #{cntrNo}
+		AND	A.DEL_YN = 'N'
+		GROUP BY A.JOIN_CNTR_NO
+	</select>
+	
+	<select id="getEventJoinCountOne" resultType="RoomChkInfo">
+		/* mybatis.mapper.yfriends.getEventJoinCountOne : 이벤트 참여횟수를 조회한다. */
+		SELECT 
+			COUNT(*) AS RM_CNT
+		FROM TB_YFRIENDS_ROOM_JOIN A
+		INNER JOIN TB_YFRIENDS_ROOM B ON A.RM_SEQ = B.RM_SEQ AND B.DEL_YN = 'N'
+		INNER JOIN TB_YFRIENDS_MENU_INFO C ON B.EM_SEQ = C.EM_SEQ AND C.EVT_SEQ = #{evtSeq}
+		WHERE A.JOIN_CNTR_NO = #{cntrNo}
+		AND	A.DEL_YN = 'N'
+	</select>
+	
+	<select id="getEventJoinCount" resultType="RoomChkInfo">
+		/* mybatis.mapper.yfriends.getEventJoinCount : 이벤트별 참여횟수를 조회한다. */
+		SELECT 
+			SUM(CASE WHEN A.RM_SEQ = #{rmSeq} THEN 1 ELSE 0 END) AS RM_CNT
+			, B.EM_SEQ
+		FROM TB_YFRIENDS_ROOM_JOIN A
+		INNER JOIN TB_YFRIENDS_ROOM B ON A.RM_SEQ = B.RM_SEQ AND B.DEL_YN = 'N'
+		WHERE JOIN_CNTR_NO = #{cntrNo}
+		AND	A.DEL_YN = 'N'
+		GROUP BY B.EM_SEQ, A.JOIN_CNTR_NO
+	</select>
+	
+	<select id="getRoomJoinCount" resultType="RoomChkInfo">
+		/* mybatis.mapper.yfriends.getRoomJoinCount : 참여횟수를 조회한다. */
+		SELECT 
+			COUNT(1) AS JOIN_CNT
+			,MAX(A.MAX_ROOM_CNT) AS MAX_ROOM_CNT
+		FROM 
+			TB_YFRIENDS_MENU_INFO A
+		inner join TB_YFRIENDS_ROOM B on A.EM_SEQ = B.EM_SEQ
+		inner join TB_YFRIENDS_ROOM_JOIN C on B.RM_SEQ = C.RM_SEQ AND C.DEL_YN = 'N'
+		WHERE B.RM_SEQ = #{rmSeq}
+		AND B.DEL_YN = 'N'
+	</select>
+	<select id="getRoomInfo" resultType="RoomInfo">
+		/* mybatis.mapper.yfriends.getRoomInfo : 방정보를 조회한다. */
+		SELECT 
+			  A.EM_SEQ
+			, A.RM_SEQ
+			, A.REMARKS
+			, A.INVITED_FNSH_YN
+			, A.JOIN_FNSH_YN
+			, A.MAX_JOIN_CNT
+			, (SELECT JOIN_CNTR_NO FROM TB_YFRIENDS_ROOM_JOIN WHERE JOIN_TYPE = 'JN001' AND RM_SEQ = A.RM_SEQ AND DEL_YN = 'N') AS MASTER_CNTR_NO
+		FROM 
+			TB_YFRIENDS_ROOM A
+		WHERE A.DEL_YN = 'N'
+		AND A.RM_SEQ		= #{rmSeq}
+	</select>
+
+	<select id="getRoomJoinList" resultType="RoomJoin">
+		/* mybatis.mapper.yfriends.getRoomJoinList : 방참여록록을 조회한다. */
+		SELECT 
+			  A.EVT_SEQ
+			, A.EM_SEQ
+			, B.RM_SEQ
+			, B.REMARKS
+			, B.INVITED_FNSH_YN
+			, B.JOIN_FNSH_YN
+			, C.JOIN_SEQ
+			, C.JOIN_TYPE
+			, C.JOIN_CNTR_NO
+			, C.JOIN_NAME
+			, C.PP_CD
+			, C.DEL_YN
+			, B.GIFT_RCV_YN
+			, (SELECT JOIN_CNTR_NO FROM TB_YFRIENDS_ROOM_JOIN WHERE JOIN_TYPE = 'JN001' AND RM_SEQ = B.RM_SEQ AND JOIN_CNTR_NO = C.JOIN_CNTR_NO AND DEL_YN = 'N') AS MASTER_CNTR_NO
+			, (SELECT MAX(JOIN_NAME) FROM TB_YFRIENDS_ROOM_JOIN WHERE JOIN_TYPE = 'JN001' AND RM_SEQ = B.RM_SEQ AND DEL_YN = 'N' ) AS MASTER_NAME
+		FROM 
+			TB_YFRIENDS_MENU_INFO A JOIN TB_YFRIENDS_ROOM B
+				ON	A.EM_SEQ	= B.EM_SEQ
+			INNER JOIN TB_YFRIENDS_ROOM_JOIN C
+                ON  C.DEL_YN = 'N' AND B.RM_SEQ = C.RM_SEQ AND C.RM_SEQ = #{rmSeq}
+		WHERE
+			A.EVT_SEQ			= #{evtSeq}
+			AND B.DEL_YN = 'N'
+			AND A.USE_YN = 'Y'
+		ORDER BY A.EM_SEQ, B.RM_SEQ, C.JOIN_TYPE
+	</select>
+	<select id="getRoomJoin" resultType="RoomJoin">
+		/* mybatis.mapper.yfriends.getRoomJoin : 방참여정보를 조회한다. */
+		SELECT 
+			  B.EM_SEQ
+			, B.RM_SEQ
+			, B.REMARKS
+			, B.INVITED_FNSH_YN
+			, B.JOIN_FNSH_YN
+			, C.JOIN_SEQ
+			, C.JOIN_TYPE
+			, C.JOIN_CNTR_NO
+			, C.JOIN_NAME
+			, C.PP_CD
+			, C.DEL_YN
+		FROM 
+			TB_YFRIENDS_ROOM B
+			INNER JOIN TB_YFRIENDS_ROOM_JOIN C 
+				ON	B.RM_SEQ = C.RM_SEQ AND C.DEL_YN = 'N'
+		WHERE B.DEL_YN = 'N'
+		AND B.RM_SEQ			= #{rmSeq}
+		AND C.JOIN_CNTR_NO = #{joinCntrNo}
+	</select>
+
+	<select id="getRoomChkList" resultType="RoomInvt">
+		/* mybatis.mapper.yfriends.getRoomChkList : 초대 록록을 조회한다. */
+		SELECT 
+			DISTINCT(B.RCV_CNTR_NO) AS RCV_CNTR_NO
+			, B.RCV_MOBILE_NO
+		FROM 
+			TB_YFRIENDS_ROOM_JOIN A
+		INNER JOIN TB_YFRIENDS_ROOM_INVT B
+			ON A.RM_SEQ = B.RM_SEQ AND B.RCV_CNTR_NO = A.JOIN_CNTR_NO
+		INNER JOIN TB_YFRIENDS_ROOM C ON C.RM_SEQ = A.RM_SEQ AND C.DEL_YN = 'N'
+		WHERE A.RM_SEQ = #{rmSeq}
+		AND A.DEL_YN = 'N'
+	</select>
+
+	<select id="getRoomInvtList" resultType="RoomInvt">
+		/* mybatis.mapper.yfriends.getRoomInvtList  : 초대 록록을 조회한다. */
+		SELECT 
+			A.RM_SEQ
+			, A.EM_SEQ
+			, D.MENU_NAME
+			, E.EVT_SEQ
+			, B.INVT_SEQ
+			, A.MAX_JOIN_CNT
+			, B.ASK_CNTR_NO
+			, B.ASK_MOBILE_NO
+			, B.ASK_NAME
+			, B.RCV_CNTR_NO
+			, B.RCV_NAME
+			, B.RCV_MOBILE_NO
+			, D.AGE_START
+			, D.AGE_END
+			, B.AGE_CHK_YN
+			, B.CALLING_CHK_YN
+			, B.DEVICE_CHK_YN
+			, (SELECT COUNT(1) FROM TB_YFRIENDS_ROOM_JOIN C WHERE C.RM_SEQ = B.RM_SEQ AND C.DEL_YN = 'N') AS JOIN_CNT
+			, TO_CHAR(B.REG_DT, 'YYYYMMDD') AS REG_DT
+		FROM TB_YFRIENDS_ROOM A
+		INNER JOIN TB_YFRIENDS_ROOM_INVT B
+			ON A.RM_SEQ = B.RM_SEQ
+		INNER JOIN  TB_YFRIENDS_MENU_INFO D
+			ON A.EM_SEQ = D.EM_SEQ
+		INNER JOIN TB_EVENT_MASTER E
+			ON E.EVT_SEQ = D.EVT_SEQ
+		WHERE A.DEL_YN = 'N' 
+		AND B.REG_DT > now() - interval '3 day'
+		<if test='rcvCntrNo != null and rcvCntrNo != ""'>
+		AND RCV_CNTR_NO = #{rcvCntrNo}
+		AND A.JOIN_FNSH_YN = 'N'
+			<if test='emSeqList.size > 0'>
+			AND A.EM_SEQ NOT IN  
+			<foreach collection="emSeqList" item="emSeq" separator="," open="(" close=")">
+				#{emSeq}
+			</foreach>
+			</if>
+		</if>
+		<if test='rmSeq != 0'>
+		AND A.RM_SEQ = #{rmSeq}
+		AND A.JOIN_FNSH_YN = 'Y'
+		</if>
+		AND A.INVITED_FNSH_YN = 'N'
+		AND TO_CHAR(now(), 'YYYYMMDDHH24MI') BETWEEN E.EVT_START_DT AND E.EVT_END_DT
+		AND E.USE_YN 	=  'Y'
+		<if test='andrdUseYn != null and andrdUseYn != ""'>
+		AND D.ANDRD_USE_YN		= #{andrdUseYn}
+		</if>
+		<if test='iosUseYn != null and iosUseYn != ""'>
+		AND D.IOS_USE_YN		= #{iosUseYn}
+		</if>
+		ORDER BY B.REG_DT DESC
+	</select>
+	
+	<insert id="insertRoomInfo" parameterType="RoomInfo" useGeneratedKeys="true" keyProperty="rmSeq" keyColumn="rm_seq">
+		/* mybatis.mapper.yfriends.insertRoomInfo : 방을 개설한다. */
+		INSERT INTO TB_YFRIENDS_ROOM
+		(
+			EM_SEQ
+			, MAX_JOIN_CNT
+			, REMARKS
+			, DEL_YN
+			, INVITED_FNSH_YN
+			, JOIN_FNSH_YN
+			, MOD_DT
+			, REG_DT
+			, GIFT_RCV_YN
+		) VALUES (
+			#{emSeq}
+			, #{maxJoinCnt}
+			, #{remarks}
+			, 'N'
+			, 'N'
+			, 'N'
+			, now()
+			, now()
+			, 'N'
+		)
+	</insert>
+	
+	<update id="updateRoomInfo" parameterType="RoomInfo">
+		/* mybatis.mapper.yfriends.updateRoomInfo : 방정보를 수정한다. */
+		UPDATE TB_YFRIENDS_ROOM
+			SET	
+				MOD_DT		= now()
+				<if test='delYn != null and delYn != ""'>
+				, DEL_YN					= #{delYn}
+				</if>
+				<if test='invitedFnshYn != null and invitedFnshYn != ""'>
+				, INVITED_FNSH_YN		= #{invitedFnshYn}
+				</if>
+				<if test='joinFnshYn != null and joinFnshYn != ""'>
+				, JOIN_FNSH_YN			= #{joinFnshYn}
+				</if>
+				<if test='giftRcvYn != null and giftRcvYn != ""'>
+				, GIFT_RCV_YN			= #{giftRcvYn}
+				</if>
+				<if test='invitedFnshYn == "Y"'>
+				, FIRST_FNSH_DT = (CASE WHEN FIRST_FNSH_DT IS NULL THEN now() ELSE FIRST_FNSH_DT END)
+				</if>
+		WHERE
+				RM_SEQ		= #{rmSeq}
+	</update>
+	
+	<insert id="insertRoomInvt" parameterType="RoomInvt" useGeneratedKeys="true" keyProperty="invtSeq" keyColumn="invt_seq">
+	/* mybatis.mapper.yfriends.insertRoomInvt : 방에 초대한다. */
+	INSERT INTO TB_YFRIENDS_ROOM_INVT
+	(
+		RM_SEQ
+		, ASK_CNTR_NO
+		, ASK_NAME
+		, ASK_MOBILE_NO
+		, RCV_CNTR_NO
+		, RCV_NAME
+		, RCV_MOBILE_NO
+		, AGE_CHK_YN
+		, CALLING_CHK_YN
+		, DEVICE_CHK_YN
+		, REG_DT
+	) VALUES (
+		#{rmSeq}
+		, #{askCntrNo}
+		, #{askName}
+		, #{askMobileNo}
+		, #{rcvCntrNo}
+		, #{rcvName}
+		, #{rcvMobileNo}
+		, #{ageChkYn}
+		, #{callingChkYn}
+		, #{deviceChkYn}
+		, now()
+	)
+	</insert>
+	
+	<insert id="insertRoomJoin" parameterType="RoomJoin" useGeneratedKeys="true" keyProperty="joinSeq"  keyColumn="join_seq">
+	/* mybatis.mapper.yfriends.insertRoomJoin : 방에  참여한다. */
+	INSERT INTO TB_YFRIENDS_ROOM_JOIN
+	(
+		RM_SEQ
+		, JOIN_TYPE
+		, JOIN_CNTR_NO
+		, JOIN_NAME
+		, PP_CD
+		, DEL_YN
+		, REG_DT
+	) VALUES (
+		#{rmSeq}
+		, #{joinType}
+		, #{joinCntrNo}
+		, #{joinName}
+		, #{ppCd}
+		, 'N'
+		, now()
+	)
+	</insert>
+	
+	<delete id="deleteRoomInvt" parameterType="RoomInvt">
+		/* mybatis.mapper.yfriends.deleteRoomInvt : 초대방 정보를 삭제한다. */
+		DELETE FROM 
+			TB_YFRIENDS_ROOM_INVT
+		WHERE RM_SEQ		= #{rmSeq}
+		<if test='rcvCntrNo != null and rcvCntrNo != ""'>
+		AND RCV_CNTR_NO		= #{rcvCntrNo}
+		</if>
+	</delete>
+	
+	<update id="updateRoomJoin" parameterType="RoomJoin">
+		/* mybatis.mapper.yfriends.updateRoomJoin : 참여방 정보를 수정한다. */
+		UPDATE TB_YFRIENDS_ROOM_JOIN
+		SET
+		<if test='delYn != null and delYn != ""'>
+		DEL_YN					= #{delYn}
+		</if>
+		WHERE RM_SEQ		= #{rmSeq} 
+		<if test='joinCntrNo != null and joinCntrNo != ""'>
+			AND JOIN_CNTR_NO = #{joinCntrNo}
+		</if>
+	</update>
+	
+	<select id="getEventCalling" resultType="EventCalling">
+		/* mybatis.mapper.yfriends.getEventCalling : 사용 가능 요금제을 조회한다. */
+		SELECT 
+			  A.PP_CD
+			, A.EM_SEQ
+		FROM 
+			TB_YFRIENDS_CALLPLAN A
+		INNER JOIN TB_YFRIENDS_MENU_INFO B ON A.EM_SEQ = B.EM_SEQ AND B.EVT_SEQ = #{evtSeq}
+		WHERE A.PP_CD		= #{ppCd}
+	</select>
+
+	<!-- Y프렌즈 방가입 여부 조회 -->
+	<select id="getEventRoomCount" resultType="int">
+		/* mybatis.mapper.yfriends.getEventRoomCount */
+		SELECT COUNT(*) AS CNT
+		  FROM TB_YFRIENDS_ROOM A
+		 INNER JOIN TB_YFRIENDS_ROOM_JOIN B
+			ON A.RM_SEQ = B.RM_SEQ
+		   AND A.DEL_YN = 'N'
+		   AND B.DEL_YN = 'N'
+		   AND B.JOIN_CNTR_NO = #{joinCntrNo}
+		 WHERE A.EM_SEQ = #{emSeq}
+	</select>
+	
+	
+	<!-- Y프렌즈 경품 잔여수량 조회-->
+	<select id="getAllGiftRemainCount" resultType="Integer">
+		/* mybatis.mapper.yfriends.getAllGiftRemainCount : 인원별 상품수량의 차이 값이 가장 큰 수를 가져온다.*/
+		SELECT COALESCE(MAX(B.data_cnt),-1) CNT FROM(
+		select sum(A.gift_cnt - A.issue_cnt) - A.mem_num AS data_cnt from tb_gift_issue_info A 
+		where evt_seq = #{evtSeq} 
+		<if test='joinCnt != null and joinCnt != ""'>
+			AND mem_num <![CDATA[ >= ]]> #{joinCnt}
+		</if>
+		group by mem_num
+		) AS B
+	</select>
+	
+	<!-- Y프렌즈 경품 잔여수량 조회-->
+	<select id="getNextGiftRemainCount" resultType="Integer">
+		/* mybatis.mapper.yfriends.getNextGiftRemainCount : 인원별 상품수량의 차이 값이 가장 큰 수를 가져온다.*/
+		SELECT COALESCE(MAX(B.data_cnt),-1) CNT FROM(
+		select sum(A.gift_cnt - A.issue_cnt) - A.mem_num AS data_cnt from tb_gift_issue_info A 
+		where evt_seq = #{evtSeq} 
+		<if test='joinCnt != null and joinCnt != ""'>
+			AND mem_num <![CDATA[ > ]]> #{joinCnt}
+		</if>
+		group by mem_num
+		) AS B
+	</select>
+	
+	<!-- Y프렌즈 인원별 경품 잔여수량 조회-->
+	<select id="getCurrentGiftRemainCount" resultType="Integer">
+		/* mybatis.mapper.yfriends.getCurrentGiftRemainCount : 현재 인원의 경품 잔여수량을 가져온다.*/
+		SELECT COALESCE(MAX(B.data_cnt),-1) CNT FROM(
+		SELECT (sum(A.gift_cnt - A.issue_cnt) - A.mem_num) AS data_cnt from tb_gift_issue_info A 
+		where evt_seq = #{evtSeq} 
+		<if test='joinCnt != null and joinCnt != ""'>
+			AND mem_num = #{joinCnt}
+		</if>
+		group by mem_num
+		) AS B
+	</select>
+	
+	<!-- Y프렌즈 경품 잔여수량 조회-->
+	<select id="getGiftRemainCount" resultType="Integer">
+		/* mybatis.mapper.yfriends.getGiftRemainCount : 경품 잔여수량을 가져온다.*/
+		SELECT COALESCE(MAX(B.data_cnt),0) CNT FROM(
+		SELECT sum(A.gift_cnt - A.issue_cnt) AS data_cnt from tb_gift_issue_info A 
+		where evt_seq = #{evtSeq}
+		<if test='joinCnt != null and joinCnt != ""'>
+			AND mem_num = #{joinCnt}
+		</if>
+		) AS B
+	</select>
+	
+	<!-- Y프렌즈 인원수별 제목,혜택 조회 -->
+	<select id="getMemberJoinTitle" resultType="RoomTitle">
+		/* mybatis.mapper.yfriends.getMemberJoinTitle Y프렌즈 인원수별 제목,혜택 조회*/
+		SELECT 
+			CASE WHEN B.DTL_TITLE = '' THEN A.DTL_TITLE ELSE B.DTL_TITLE END DTL_TITLE,
+			CASE WHEN B.DTL_ROOM_TITLE = '' THEN A.DTL_ROOM_TITLE ELSE B.DTL_ROOM_TITLE END DTL_ROOM_TITLE
+			FROM tb_yfriends_menu_info A
+			LEFT OUTER JOIN tb_yfriends_title_info B
+			ON A.EVT_SEQ = B.EVT_SEQ 
+		WHERE A.EVT_SEQ = #{evtSeq} 
+		<choose>
+			<when test='joinCnt != null and joinCnt != ""'>
+				AND mem_num = #{joinCnt}
+			</when>
+			<otherwise>
+				AND mem_num = 0
+			</otherwise>
+		</choose>	
+		UNION ALL(
+			SELECT 
+			A.DTL_TITLE,
+			A.DTL_ROOM_TITLE
+			FROM tb_yfriends_menu_info A
+			WHERE A.EVT_SEQ = #{evtSeq} 
+		)
+		LIMIT 1 OFFSET 0
+	</select>
+	
+</mapper>

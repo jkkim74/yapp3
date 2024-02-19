@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mybatis.mapper.vas">
+	<sql id="pagePrefix">
+		SELECT * FROM (
+	</sql>
+	<sql id="pageSuffix">
+		) TX WHERE RNUM BETWEEN #{stIdx} AND #{edIdx}
+	</sql>
+	
+	<select id="getVasList" resultType="VasItem">
+		/* mybatis.mapper.vas.getVasList : 부가서비스 상품 목록을 조회한다. */
+		SELECT 
+			  VAS_ITEM_CD
+			, VAS_ITEM_ID
+			, VAS_ITEM_NM
+			, VAS_CD
+			, VAS_NM
+			, BUY_TP
+			, PRICE
+			, DATA_AMT
+			, USE_YN
+			, REG_DT
+		FROM
+			TM_VAS_ITEM
+		WHERE
+				USE_YN 			= 'Y'
+		<if test='vasItemCd != null and vasItemCd != ""'>
+			AND VAS_ITEM_CD		= #{vasItemCd}
+		</if>
+		<if test='vasCd != null and vasCd != ""'>
+			AND VAS_CD		= #{vasCd}
+		</if>
+		ORDER BY ORD_SEQ
+	</select>
+	
+	<select id="getVasHistList" resultType="VasItem">
+		/* mybatis.mapper.vas.getVasHistList : 부가서비스 설정 이력 목록을 조회한다. */
+		SELECT 
+			  VAS_HIST.CNTR_NO
+			, VAS_HIST.VAS_ITEM_CD
+			, VAS_HIST.VAS_CD
+			, VAS_HIST.APPL_TP
+			, VAS_HIST.REG_DT
+			, SUM(COALESCE(VAS.DATA_AMT, 0)) OVER()	AS SUM_DATA_CNT		/* 부가서비스 횟수 */
+			, SUM(COALESCE(VAS.DATA_AMT, 0)) OVER()	AS SUM_DATA_AMT		/* 부가서비스 용량 */
+		FROM
+			TH_VALUE_ADDED_SERVICE 			VAS_HIST
+		JOIN
+			TM_VAS_ITEM						VAS
+				ON		VAS_HIST.VAS_CD			= VAS.VAS_CD
+					AND VAS_HIST.VAS_ITEM_CD	= VAS.VAS_ITEM_CD
+		WHERE
+				VAS_HIST.CNTR_NO			= #{cntrNo}
+		<if test='vasItemCd != null and vasItemCd != ""'>
+			AND VAS_HIST.VAS_ITEM_CD		= #{vasItemCd}
+		</if>
+		<if test='vasCd != null and vasCd != ""'>
+			AND VAS_HIST.VAS_CD				= #{vasCd}
+		</if>
+		<if test='applTp != null and applTp != ""'>
+			AND VAS_HIST.APPL_TP			= #{applTp}
+		</if>
+		<if test='isSrchCurMnth == "Y"'>
+			AND VAS_HIST.APPL_YM			= TO_CHAR(now(), 'YYYYMM')
+		</if>
+		<if test='isSrchCurHour == "Y"'>
+			AND VAS_HIST.APPL_YM			= TO_CHAR(now(), 'YYYYMM')
+			AND TO_CHAR(VAS_HIST.REG_DT, 'YYYYMMDDHH24')				= TO_CHAR(now(), 'YYYYMMDDHH24')
+		</if>
+	</select>
+	
+	<insert id="insertVasHistList" parameterType="VasItem">
+		/* mybatis.mapper.vas.insertVasHistList : 부가 서비스 이력 정보를 추가한다. */
+		INSERT INTO	TH_VALUE_ADDED_SERVICE
+		(
+			  CNTR_NO
+			, VAS_ITEM_CD
+			, VAS_CD
+			, APPL_TP
+			, APPL_YM
+			, REG_DT
+		) VALUES
+		(
+			  #{cntrNo}
+			, #{vasItemCd}
+			, #{vasCd}
+			, #{applTp}
+			, TO_CHAR(now(), 'YYYYMM')
+			, now()
+		)
+	</insert>
+
+	<select id="getRouletteList" resultType="GrpCode">
+		/* mybatis.mapper.vas.getRouletteList : 부가서비스 상품 목록을 조회한다. */
+		WITH TT_RANDOM AS (
+		SELECT ROUND(CAST(RANDOM()*100 AS NUMERIC)) AS RANNUM
+		)
+		SELECT 
+			TTT.CODE_NM
+			,TTT.CODE_KEY
+		FROM TM_GROUP_CODE TTT 
+		WHERE GRP_CODE_ID = 'ROULETTE' AND CODE_NM::NUMERIC > (SELECT RANNUM FROM TT_RANDOM) ORDER BY CODE_NM::NUMERIC LIMIT 1
+
+	</select>
+	
+</mapper>

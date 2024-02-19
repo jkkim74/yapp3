@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+ * ycanvasMapper.xml
+ * 
+ * @author park
+ * @since 2023. 3. 31.
+ * @version 1.0
+ * 
+ * Modification Information
+ * Mod Date		Modifier		Description
+ * ========================================
+ * Copyright (c) 2018 KTDS, Inc. All Rights Reserved
+ -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mybatis.mapper.ycanvas">
+	
+	<select id="getYCanvasItemList" resultType="YcanvasItem">
+	/* mybatis.mapper.ycanvas.getYCanvasItemList : 수강 상품리스트를 보여준다 */		
+	SELECT 
+		A.cls_seq, C.issue_seq, B.gift_name AS cls_title, B.gift_intro AS cls_small_title, A.del_yn, B.gift_seq, B.gift_name, B.gift_intro, B.gift_type, 
+		(CASE WHEN C.gift_cnt - C.issue_cnt > 0 THEN B.img_url ELSE B.sold_img_url END) AS img_url,
+		C.gift_cnt, C.issue_cnt, 
+		A.max_join_cnt, 
+		F.max_class_cnt,
+		B.VALID_START_DT,
+		B.VALID_END_DT,
+		TO_CHAR(TO_TIMESTAMP(SUBSTRING(B.VALID_START_DT, 0, 9 ) || ' ' || (SUBSTRING(B.VALID_START_DT, 9, 4 ))::time, 'YYYYMMDD HH24:MI'),'YYYY.MM.DD HH24') || ':'  || SUBSTRING(B.VALID_START_DT, 11, 4 ) 
+		--|| ' ~ ' ||
+		--TO_CHAR(TO_TIMESTAMP(SUBSTRING(B.VALID_END_DT, 0, 9 ) || ' ' || (SUBSTRING(B.VALID_END_DT, 9, 4 ))::time, 'YYYYMMDD HH24:MI'),'YYYY.MM.DD HH24') || ':'  || SUBSTRING(B.VALID_END_DT, 11, 4 ) 
+		AS class_schd, --현재 원데이 상품 기준으로 시간만 표출
+		(B.VALID_END_DT > TO_CHAR(now(), 'YYYYMMDDHH24MI') AND C.issue_cnt <![CDATA[ < ]]> C.gift_cnt) AS class_valid_yn, --상품유효날짜(종료일자보다 적거나 상품이 남았을경우 유효)
+		<choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+			CASE WHEN COALESCE((
+			SELECT COUNT(*) FROM tb_class_join D 
+			INNER JOIN tb_class_reward_info E
+			ON D.rew_seq = E.rew_seq AND E.issue_seq = C.issue_seq
+			WHERE 
+			D.cntr_no = #{cntrNo} AND D.del_yn = 'N'),0) > 0 OR C.issue_cnt >= C.gift_cnt THEN 'N' ELSE 'Y' END AS class_join_yn --참여가능여부  
+        	</when>
+        	<otherwise>
+			CASE WHEN COALESCE((
+			SELECT COUNT(*) FROM tb_class_join D 
+			INNER JOIN tb_class_reward_info E
+			ON D.rew_seq = E.rew_seq AND E.issue_seq = C.issue_seq
+			WHERE 
+			D.user_id = #{userId} AND D.del_yn = 'N'),0) > 0 OR C.issue_cnt >= C.gift_cnt THEN 'N' ELSE 'Y' END AS class_join_yn --참여가능여부  
+        	</otherwise>
+        </choose>
+		FROM tb_class_info A
+		INNER JOIN tb_gift_master B
+		ON A.gift_seq = B.gift_seq
+		LEFT OUTER JOIN tb_gift_issue_info C
+		ON B.gift_seq = C.gift_seq
+		LEFT OUTER JOIN tb_event_master F
+		ON A.evt_seq = F.evt_seq
+		WHERE 
+		A.evt_seq = #{evtSeq} 
+		AND NOW() <![CDATA[ < ]]> TO_TIMESTAMP(B.VALID_END_DT,'YYYYMMDDHH24MI')
+		ORDER BY A.cls_seq, class_join_yn 
+	</select>
+	
+	<select id="getYCanvasJoinCount" resultType="Integer">
+	/* mybatis.mapper.ycanvas.getYCanvasJoinCount : Y캔버스 이벤트 경품 지급완료 횟수를 조회한다*/
+	SELECT 
+		COUNT(E.ISSUE_SEQ)  AS CNT
+	FROM TB_EVENT_MASTER A 
+	INNER JOIN TB_GIFT_ISSUE_INFO B ON A.EVT_SEQ = B.EVT_SEQ
+	<choose>
+    	<when test ='cntrNo != null and cntrNo != ""'>
+			LEFT OUTER JOIN (SELECT C.*, D.DEL_YN FROM tb_class_reward_info C INNER JOIN tb_class_join D ON C.REW_SEQ = D.REW_SEQ AND D.CNTR_NO = #{cntrNo}) E ON E.ISSUE_SEQ = B.ISSUE_SEQ
+      	</when>
+    	<otherwise>
+			LEFT OUTER JOIN (SELECT C.*, D.DEL_YN FROM tb_class_reward_info C INNER JOIN tb_class_join D ON C.REW_SEQ = D.REW_SEQ AND D.USER_ID = #{userId}) E ON E.ISSUE_SEQ = B.ISSUE_SEQ
+    	</otherwise>
+    </choose>
+	WHERE A.EVT_SEQ = #{evtSeq}
+	AND E.ISSUE_YN = 'Y'
+	AND E.DEL_YN = 'N'
+	</select>
+	
+	<insert id="updateYCanvasJoin" parameterType="YcanvasItem">
+	/* mybatis.mapper.ycanvas.updateYCanvasJoin : Y캔버스 클래스 신청정보를 수정 한다*/
+	UPDATE TB_CLASS_JOIN 
+	SET del_yn = 'Y', mod_dt = NOW()
+	WHERE 
+	join_seq = #{joinSeq}
+	</insert>
+	
+	<insert id="insertYCanvasJoin" parameterType="YcanvasItem">
+	/* mybatis.mapper.ycanvas.insertYCanvasJoin : Y캔버스 클래스 신청정보를 등록 한다*/
+	INSERT INTO TB_CLASS_JOIN 
+	(
+		rew_seq, 
+		cntr_no, 
+		user_id, 
+		del_yn, 
+		mod_dt, 
+		reg_dt
+	) 
+	VALUES
+	(
+		#{rewSeq}, 
+		#{cntrNo}, 
+		#{userId}, 
+		'N', 
+		NULL, 
+		NOW()
+	);
+	</insert>
+	
+	<insert id="updateYCanvasReward" parameterType="YcanvasItem">
+	/* mybatis.mapper.ycanvas.updateYCanvasReward : Y캔버스 회원 리워드 정보를 취소 한다*/
+	UPDATE TB_CLASS_REWARD_INFO
+	SET ISSUE_YN = 'N', mod_dt = null
+	WHERE 
+	rew_seq = #{rewSeq}
+	</insert>
+	
+	<select id="getOverlapDateCheck" resultType="boolean">
+	/* mybatis.mapper.ycanvas.getOverlapStartDateCheck : 현재 이벤트에 해당되는 수강들중 내가 수강 신청한 것들중에 등록된게 있으면 시작시간이 겹치는지 확인한다.*/
+		SELECT
+    		<if test ='dateType != null and dateType != "" and dateType != "start"'>
+				TO_TIMESTAMP(SUBSTRING(#{overlapCheckDate},9,4),'HH24MI')::TIME + INTERVAL '1 MINUTE'
+				BETWEEN TO_TIMESTAMP(SUBSTRING(tgm.valid_start_dt,9,4),'HH24MI')::TIME AND TO_TIMESTAMP(SUBSTRING(tgm.valid_end_dt,9,4),'HH24MI')::TIME - INTERVAL '1 MINUTE' AS date_overlap --현재 원데이 상품 기준으로 시간만 체크
+      		</if>
+    		<if  test ='dateType != null and dateType != "" and dateType != "end"'>
+				TO_TIMESTAMP(SUBSTRING(#{overlapCheckDate},9,4),'HH24MI')::TIME - INTERVAL '1 MINUTE'
+				BETWEEN TO_TIMESTAMP(SUBSTRING(tgm.valid_start_dt,9,4),'HH24MI')::TIME AND TO_TIMESTAMP(SUBSTRING(tgm.valid_end_dt,9,4),'HH24MI')::TIME - INTERVAL '1 MINUTE' AS date_overlap --현재 원데이 상품 기준으로 시간만 체크
+    		</if>
+		FROM 
+		tb_class_info tci
+		INNER JOIN tb_class_reward_info tcri
+		ON tci.gift_seq = tcri.gift_seq
+		INNER JOIN tb_class_join tcj 
+		ON tcj.rew_seq = tcri.rew_seq
+		INNER JOIN tb_gift_master tgm 
+		ON tgm.gift_seq = tci.gift_seq
+		WHERE 
+		tci.evt_seq = #{evtSeq}
+		AND 
+		<choose>
+    		<when test ='cntrNo != null and cntrNo != ""'>
+				tcj.cntr_no = #{cntrNo} 
+      		</when>
+    		<otherwise>
+				tcj.user_id = #{userId} 
+    		</otherwise>
+    	</choose>
+		AND tcj.del_yn = 'N'
+		ORDER BY date_overlap DESC
+		LIMIT 1 OFFSET 0
+	</select>
+	
+</mapper>

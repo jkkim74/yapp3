@@ -1,0 +1,549 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * userMapper.xml
+ * 
+ * @author
+ * @since
+ * @version 1.0
+ * 
+ * Modification Information
+ * Mod Date		Modifier		Description
+ * ========================================
+ * 2019. 3. 23.	seungman.yu 	사용자 리뷰
+ * Copyright (c) 2018 KTDS, Inc. All Rights Reserved
+-->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mybatis.mapper.userkt">
+	<resultMap id="userInfoMap" type="UserInfo">
+		<result property="mobileNo" 	column="MOBILE_NO" />
+		<result property="userId" 		column="USER_ID" />
+		<result property="pushRcvYn" 	column="PUSH_RCV_YN" />
+		<result property="mktChgDt" 	column="MKT_CHG_DT" />
+		<result property="mktRcvYn" 	column="MKT_RCV_YN" />
+		<result property="joinStatus" 	column="JOIN_STATUS" />
+		<result property="memStatus" 	column="MEM_STATUS" />
+		<result property="regMmDt" 	column="REG_MM_DT" />
+		<result property="sleepUserYn" 	column="SLEEP_USER_YN" />
+		<result property="birthDay" 	column="BIRTH_DAY" />
+		<result property="opt2TermsAgreeYn" 	column="OPT2_TERMS_AGREE_YN" />
+		<result property="prfYn" 	column="PRF_YN" />
+		<result property="gender" 	column="GENDER" />
+		<result property="email" 	column="EMAIL" />
+		<result property="userNm" 	column="NAME" />
+		<result property="ktYn" 	column="KT_YN" />
+		<result property="mobileCd" 	column="MOBILE_CD" />
+		
+		<association property="termsAgree" javaType="TermsAgree">
+			<result property="userId" 		column="USER_ID" />
+			<result property="agreeChnl" 		column="AGREE_CHNL" />
+			<result property="piUseTermsVrsn" 	column="PI_USE_TERMS_VRSN" />
+			<result property="piPolicyTermsVrsn"	column="PI_POLICY_TERMS_VRSN" />
+			<result property="piUseAgreeYn" 	column="PI_USE_AGREE_YN" />
+			<result property="piPolicyAgreeYn" 	column="PI_POLICY_AGREE_YN" />
+			<result property="opt2TermsAgreeYn" 	column="OPT2_TERMS_AGREE_YN" />
+			<result property="mktRcvAgreeYn" 	column="MKT_RCV_AGREE_YN" />
+			<result property="optTermsChgDt" 	column="OPT_TERMS_CHG_DT" />
+			<result property="shopTermsAgreeYn" 	column="SHOP_TERMS_AGREE_YN" />
+			<result property="shopTermsVrsn" 	column="SHOP_TERMS_VRSN" />
+		</association>
+	</resultMap>
+	
+	<select id="getUserKtInfo" resultMap="userInfoMap">
+		/* mybatis.mapper.userkt.getUserKtInfo : KT 사용자 정보를 조회한다. (아이디기준) */
+		WITH WT_MAX_TERMS_VRSN AS (
+			SELECT
+				MAX(SEQ) AS SEQ
+			FROM 
+				TB_TERMS_AGREE_KT
+			WHERE 
+					USER_ID	= #{userId}
+		), WT_TERMS_AGREE_KT AS (
+			SELECT 
+				A.*
+			FROM 
+				TB_TERMS_AGREE_KT A
+			JOIN
+				WT_MAX_TERMS_VRSN B
+					ON		A.SEQ	= B.SEQ
+		)
+		SELECT
+			  A.MOBILE_NO
+			, A.USER_ID
+			, A.GENDER
+			, A.EMAIL
+			, A.BIRTH_DAY
+			, A.PUSH_RCV_YN
+			, A.MKT_RCV_YN
+			, A.MKT_CHG_DT
+			, A.JOIN_STATUS
+			, A.MEM_STATUS
+			, A.NAME
+			, A.KT_YN
+			, A.MOBILE_CD
+			, B.PI_USE_TERMS_VRSN
+			, B.PI_POLICY_TERMS_VRSN
+			, B.AGREE_CHNL
+			, B.PI_USE_AGREE_YN
+			, B.PI_POLICY_AGREE_YN
+			, B.OPT_TERMS_AGREE_YN AS MKT_RCV_AGREE_YN
+			, B.OPT_TERMS_CHG_DT
+			, B.OPT2_TERMS_AGREE_YN AS OPT2_TERMS_AGREE_YN
+			, B.OPT2_TERMS_CHG_DT
+			, B.SHOP_TERMS_AGREE_YN AS SHOP_TERMS_AGREE_YN
+			, B.SHOP_TERMS_VRSN
+			, TO_CHAR(A.REG_DT, 'YYYYMM') AS REG_MM_DT
+			, CASE WHEN COALESCE(C.USER_ID, 'N') = 'N' THEN 'N' ELSE 'Y' END SLEEP_USER_YN
+			, A.BIRTH_DAY
+			, (CASE 
+				WHEN PRF_FLAG IS NULL THEN 'Y'
+				WHEN PRF_FLAG = 'Z' AND PRF_DT IS NOT NULL AND PRF_DT <![CDATA[<]]> NOW() - #{prfDay} * INTERVAL '1 day'  THEN 'Y'
+				ELSE 'N'
+			END) AS PRF_YN
+		FROM
+			TB_USER_KT A 
+		LEFT JOIN 
+			WT_TERMS_AGREE_KT B
+				ON A.USER_ID = B.USER_ID
+		LEFT JOIN TB_SLEEP_USER_KT C 
+			ON A.USER_ID = C.USER_ID		
+		WHERE 
+			A.USER_ID	= #{userId}
+	</select>
+	
+	<insert id="insertUserKtInfo" parameterType="UserInfo">
+		/* mybatis.mapper.user.insertUserKtInfo : 사용자 정보를 추가한다. (아이디기준) */
+		INSERT INTO TB_USER_KT (
+			  USER_ID
+			, MOBILE_NO
+			, EMAIL
+			, GENDER
+			, BIRTH_DAY
+			, PUSH_RCV_YN
+			, MKT_RCV_YN
+			, JOIN_STATUS
+			, MEM_STATUS
+			, OS_TP
+			, DUP_ID
+			, APP_VRSN
+			, MKT_CHG_DT
+			, REG_DT
+			, MOD_DT
+			, NAME
+			, KT_YN
+			, MOBILE_CD
+		) VALUES (
+			  #{userId}
+			, #{mobileNo}
+			, #{email}
+			, #{gender}
+			, #{birthDay}
+			, COALESCE(#{pushRcvYn}, 'N')
+			, COALESCE(#{mktRcvYn}, 'N')
+			, 'G0001'
+            , #{memStatus}
+			, #{osTp}
+			, #{dupId}
+			, #{appVrsn}
+			, now()
+			, now()
+			, now()
+			, #{userNm}
+			, #{ktYn}
+			, #{mobileCd}
+		)
+	</insert>
+	
+	<select id="getSleepUserKtInfo" resultType="UserInfo">
+		/* mybatis.mapper.userkt.getSleepUserKtInfo : 유휴계정 사용자 정보를 조회한다. (아이디기준) */
+		SELECT
+			    USER_ID
+			  , TO_CHAR(SLEEP_REG_DT, 'YYYY.MM.DD HH24:MI:SS') AS SLEEP_REG_DT
+		FROM
+			TB_SLEEP_USER_KT A
+		WHERE
+			USER_ID = #{userId}
+		ORDER BY SLEEP_REG_DT DESC
+		LIMIT 1
+	</select>
+	
+	<delete id="deleteSleepUserKtInfo" parameterType="UserInfo">
+		/* mybatis.mapper.userkt.deleteSleepUserInfo : 유휴계정 사용자 정보를 삭제한다. (아이디기준) */
+		DELETE FROM TB_SLEEP_USER_KT
+		WHERE
+			USER_ID = #{userId}
+	</delete>
+	
+	<update id="updateDupIdInfo" parameterType="Map">
+		/* mybatis.mapper.userkt.updateDupIdInfo : dup Id를 저장한다. (아이디기준) */
+		UPDATE 
+			TB_USER_KT
+		SET
+				DUP_ID = #{dupId}
+				,OS_TP = #{osTp}
+				,APP_VRSN = #{appVrsn}
+			<if test='userId != null and userId != ""'>
+				, USER_ID				= #{userId}
+			</if>
+				, MOD_DT = now()
+		WHERE
+			USER_ID			= #{userId}
+	</update>
+	
+	<update id="updateUserPpcdAndMobileCd" parameterType="Map">
+		/* mybatis.mapper.userkt.updateUserSettingInfo : 사용자 설정 정보를 갱신한다. */
+		UPDATE TB_USER_KT SET
+			  MOD_DT				= NOW()
+		<if test='mobileCd != null and mobileCd != ""'>
+			, MOBILE_CD				= #{mobileCd}
+		</if>
+		<if test='memStatus != null and memStatus != ""'>
+			, MEM_STATUS			= #{memStatus}
+		</if>
+		<if test='pushRcvYn != null and pushRcvYn != ""'>
+			, PUSH_RCV_YN			= #{pushRcvYn}
+		</if>
+		WHERE
+			USER_ID	= #{userId}
+	</update>
+	
+	<update id="updateUserKtSettingInfo" parameterType="UserInfo">
+		/* mybatis.mapper.userkt.updateUserKtSettingInfo : 사용자 설정 정보를 갱신한다. (아이디기준) */
+		UPDATE TB_USER_KT SET
+			  MOD_DT				= NOW()
+		<!-- <if test='userId != null and userId != ""'>
+			, USER_ID				= #{userId}
+		</if>	 -->
+		<if test='gender != null and gender != ""'>
+			, GENDER			= #{gender}
+		</if>	
+		<if test='email != null and email != ""'>
+			, EMAIL			= #{email}
+		</if>	
+		<if test='pushRcvYn != null and pushRcvYn != ""'>
+			, PUSH_RCV_YN			= #{pushRcvYn}
+		</if>	
+		<if test='mktRcvYn != null and mktRcvYn != ""'>
+			, MKT_RCV_YN			= #{mktRcvYn}
+			, MKT_CHG_DT			= CASE WHEN MKT_RCV_YN = #{mktRcvYn} THEN MKT_CHG_DT ELSE now() END
+		</if>	
+		<!-- <if test='reqRcvYn != null and reqRcvYn != ""'>
+			, REQ_RCV_YN			= #{reqRcvYn}
+		</if> -->	
+		<if test='joinStatus != null and joinStatus != ""'>
+			, JOIN_STATUS			= #{joinStatus}
+		</if>	
+		<if test='memStatus != null and memStatus != ""'>
+			, MEM_STATUS			= #{memStatus}
+		</if>	
+		<!-- <if test='dboxStatus != null and dboxStatus != ""'>
+			, DBOX_STATUS			= #{dboxStatus}
+		</if>	
+		<if test='dboxId != null and dboxId != ""'>
+			, DBOX_ID				= #{dboxId}
+		</if> -->
+		<if test='osTp != null and osTp != ""'>
+			, OS_TP				= #{osTp}
+		</if>
+		<if test='dupId != null and dupId != ""'>
+			, DUP_ID			= #{dupId}
+		</if>
+		<if test='appVrsn != null and appVrsn != ""'>
+			, APP_VRSN			= #{appVrsn}
+		</if>
+		<!-- <if test='fourteenYn != null and fourteenYn != ""'>
+			, FOURTEEN_YN			= COALESCE(#{fourteenYn}, 'N')
+		</if> -->
+		<!-- <if test='joinStatus != "G0001"'>
+			, AUTH_YN				= 'N'
+		</if> -->
+		<!-- <if test='evtInvtYn != null and evtInvtYn != ""'>
+			, EVT_INVT_YN				= #{evtInvtYn}
+		</if> -->
+		<if test='ktYn != null and ktYn != ""'>
+			, KT_YN 	= #{ktYn}
+		</if>
+		WHERE
+			USER_ID	= #{userId}
+	</update>
+	
+	<update id="updateJoinStatusKt" parameterType="Map">
+		/* mybatis.mapper.userkt.updateJoinStatusKt : 가입상태를 가입으로 갱신한다. (아이디기준) */
+		UPDATE TB_USER_KT SET
+			  MOD_DT				= NOW()
+			, JOIN_STATUS			= #{joinStatus}
+		WHERE
+				USER_ID	= #{userId}
+		AND		JOIN_STATUS	!= #{joinStatus}
+	</update>
+	
+		<select id="getTermsAgreeKtInfoWithUserId" resultType="TermsAgree">
+		/* mybatis.mapper.userkt.getTermsAgreeKtInfoWithUserId : 선택 약관 정보를 조회한다. (아이디기준) */
+		
+		WITH WT_MAX_TERMS_VRSN AS (
+			SELECT
+				MAX(SEQ) AS SEQ
+			FROM 
+				TB_TERMS_AGREE_KT
+			WHERE 
+					USER_ID	= #{userId}
+		)
+        SELECT 
+				A.*
+			FROM 
+				TB_TERMS_AGREE_KT A
+			JOIN
+				WT_MAX_TERMS_VRSN B
+					ON		A.SEQ	= B.SEQ;
+	</select>
+	
+	<select id="getTermsAgreeKtInfo" resultType="TermsAgree">
+		/* mybatis.mapper.userkt.getTermsAgreeKtInfo : 선택 약관 정보를 조회한다. (아이디기준) */
+		SELECT 
+			  SEQ
+			, USER_ID
+			, PI_USE_TERMS_VRSN
+			, PI_POLICY_TERMS_VRSN
+			, AGREE_CHNL
+			, PI_USE_AGREE_YN
+			, PI_POLICY_AGREE_YN
+			, OPT_TERMS_AGREE_YN AS MKT_RCV_AGREE_YN
+			, OPT_TERMS_CHG_DT
+			, OPT2_TERMS_AGREE_YN
+			, OPT2_TERMS_CHG_DT
+			, SHOP_TERMS_AGREE_YN
+			, SHOP_TERMS_VRSN
+			, REG_DT
+		FROM 
+			TB_TERMS_AGREE_KT A
+		WHERE
+				A.USER_ID				= #{userId}
+			AND	A.PI_USE_TERMS_VRSN		= #{piUseTermsVrsn}
+			AND A.PI_POLICY_TERMS_VRSN	= #{piPolicyTermsVrsn}
+			AND A.SHOP_TERMS_VRSN	= #{shopTermsVrsn}
+	</select>
+		
+	<insert id="insertTermsAgreeKtInfo" parameterType="TermsAgree">
+		/* mybatis.mapper.userkt.insertTermsAgreeKtInfo : 약관 동의 정보를 추가한다. (아이디기준) */
+		INSERT INTO TB_TERMS_AGREE_KT (
+			  USER_ID
+			, PI_USE_TERMS_VRSN
+			, PI_POLICY_TERMS_VRSN
+			, AGREE_CHNL
+			, PI_USE_AGREE_YN
+			, PI_POLICY_AGREE_YN
+			, OPT_TERMS_AGREE_YN
+			, OPT_TERMS_CHG_DT
+			, OPT2_TERMS_AGREE_YN
+			, OPT2_TERMS_CHG_DT
+			, SHOP_TERMS_AGREE_YN
+			, SHOP_TERMS_VRSN
+			, REG_DT
+		) VALUES (
+			  #{userId}
+			, #{piUseTermsVrsn}
+			, #{piPolicyTermsVrsn}
+			, #{agreeChnl}
+			, #{piUseAgreeYn}
+			, #{piPolicyAgreeYn}
+			, #{mktRcvAgreeYn}
+			, now()
+			, #{opt2TermsAgreeYn}
+			, now()
+			, #{shopTermsAgreeYn}
+			, #{shopTermsVrsn}
+			, now()
+		)
+	</insert>
+
+	<insert id="updateTermsAgreeKtInfo" parameterType="TermsAgree">
+		/* mybatis.mapper.userkt.updateTermsAgreeKtInfo : 약관 동의 정보를 수정한다. (아이디기준) */
+		UPDATE TB_TERMS_AGREE_KT SET 
+	           AGREE_CHNL = #{agreeChnl}
+			 , PI_USE_AGREE_YN = #{piUseAgreeYn}
+			 , PI_POLICY_AGREE_YN = #{piPolicyAgreeYn}
+			 , OPT_TERMS_AGREE_YN = #{mktRcvAgreeYn}
+			 , OPT_TERMS_CHG_DT =now()
+			 , OPT2_TERMS_AGREE_YN = #{opt2TermsAgreeYn}
+			 , OPT2_TERMS_CHG_DT =now()
+ 			 , SHOP_TERMS_AGREE_YN = #{shopTermsAgreeYn}
+		WHERE
+			   USER_ID			     = #{userId}
+		   AND PI_USE_TERMS_VRSN	 = #{piUseTermsVrsn}
+		   AND PI_POLICY_TERMS_VRSN	 = #{piPolicyTermsVrsn}
+		   AND SHOP_TERMS_VRSN	= #{shopTermsVrsn}
+	</insert>
+	
+	<select id="getDupIdInfoKt" resultType="JoinInfo">
+		/* mybatis.mapper.userkt.getDupIdInfoKt : dup Id 를 조회한다. */
+		SELECT
+			  COALESCE(DUP_ID, '') AS DUP_ID
+		FROM
+			TB_USER_KT
+		WHERE
+			USER_ID = #{userId}
+	</select>
+	
+	<update id="updateUserKtModDtInfo" parameterType="Map">
+		/* mybatis.mapper.userkt.updateUserKtModDtInfo : 접속날짜를 변경한다. (아이디기준) */
+		UPDATE 
+			TB_USER_KT
+		SET 
+		<choose>
+			<when test='userId != null and userId != ""'>
+				USER_ID = (CASE WHEN USER_ID = #{userId} THEN USER_ID ELSE #{userId} END)
+			</when>
+			<otherwise>
+				MOD_DT = now()
+			</otherwise>
+		</choose> 
+		WHERE
+			USER_ID = #{userId}
+	</update>
+	
+	<update id="updateOptTerms" parameterType="TermsAgree">
+		/* mybatis.mapper.userkt.updateOptTerms : 선택 약관 정보를 변경한다. (아이디기준) */
+		UPDATE TB_TERMS_AGREE_KT SET
+		USER_ID = USER_ID
+		<if test='mktRcvAgreeYn != null and mktRcvAgreeYn != ""'>
+			  ,	OPT_TERMS_CHG_DT	= CASE WHEN OPT_TERMS_AGREE_YN = #{mktRcvAgreeYn} THEN OPT_TERMS_CHG_DT ELSE now() END
+			  , OPT_TERMS_AGREE_YN 	= #{mktRcvAgreeYn}
+		</if>
+		<if test='opt2TermsAgreeYn != null and opt2TermsAgreeYn != ""'>
+			  ,  OPT2_TERMS_CHG_DT	= CASE WHEN OPT2_TERMS_AGREE_YN = #{opt2TermsAgreeYn} THEN OPT2_TERMS_CHG_DT ELSE now() END
+			  , OPT2_TERMS_AGREE_YN = #{opt2TermsAgreeYn}
+		</if>
+		WHERE
+				SEQ 			    = (SELECT MAX(SEQ) FROM TB_TERMS_AGREE_KT WHERE USER_ID = #{userId})
+	</update>
+	
+	<update id="updateUserSettingMkt" parameterType="TermsAgree">
+		/* mybatis.mapper.userkt.updateUserSettingMkt : 사용자 설정 마켓팅정보를 갱신한다. (아이디기준) */
+		UPDATE TB_USER_KT SET
+			  MOD_DT				= NOW()
+			, MKT_RCV_YN			= #{mktRcvAgreeYn}
+			, MKT_CHG_DT			= CASE WHEN MKT_RCV_YN = #{mktRcvAgreeYn} THEN MKT_CHG_DT ELSE now() END
+		WHERE
+			USER_ID	= #{userId}
+	</update>
+	
+	<select id="getUserKtReviewInfo" parameterType="ReviewInfo" resultType="ReviewInfo">
+		/* mybatis.mapper.userkt.getUserKtReviewInfo : kt비회선 사용자 reivew 정보 조회한다. (아이디기준) */
+		SELECT
+			  USER_ID
+			, CASE WHEN (REVIEW_YN = 'N' AND REVIEW_REG_DT <![CDATA[<]]> now()-3 * interval '1 month') THEN 'A' ELSE REVIEW_YN END REVIEW_YN
+			, TO_CHAR(REVIEW_REG_DT, 'YYYY.MM.DD HH24:MI:SS') AS REVIEW_DT
+			FROM TB_USER_KT
+			WHERE USER_ID = #{userId}
+	</select>
+	
+	<update id="setUserKtReviewInfo" parameterType="ReviewInfo">
+		/* mybatis.mapper.userkt.setUserKtReviewInfo : 사용자 reivew 정보 업데이트한다. (아이디기준) */
+		UPDATE TB_USER_KT
+			SET REVIEW_YN = #{reviewYn}
+			,REVIEW_REG_DT = now()
+			WHERE USER_ID = #{userId}
+	</update>
+	
+	<select id="getPreferenceListKt" resultType="PreferenceInfo">
+		/* mybatis.mapper.userkt.getPreferenceListKt : 선호도 정보를 조회한다. (아이디기준) */
+		SELECT 
+			A.PRF_SEQ 
+			, A.PRF_NAME
+			, A.PRF_IMG
+			, A.REMARKS
+			, CASE WHEN B.PRF_SEQ IS NULL THEN 'N' ELSE 'Y' END AS CHECK_YN
+		FROM TB_PREFERENCE_MASTER A 
+		LEFT OUTER JOIN TB_PREFERENCE_INFO_KT B ON A.PRF_SEQ = B.PRF_SEQ AND B.KT_ID = #{userId}
+		WHERE A.USE_YN = 'Y'
+		ORDER BY A.PRF_ORDER
+	</select>
+	
+	<delete id="deletePreferenceInfoKt" parameterType="Map">
+		/* mybatis.mapper.userkt.deletePreferenceInfoKt : kt비회선 선호도 정보를 삭제한다. (아이디기준) */
+		DELETE FROM TB_PREFERENCE_INFO_KT
+		WHERE
+			KT_ID = #{userId}
+	</delete>
+	
+	<insert id="insertPreferenceInfoKt" parameterType="Map">
+		/* mybatis.mapper.userkt.insertPreferenceInfoKt : kt비회선 선호도 정보를 등록한다. (아이디기준) */
+		INSERT INTO TB_PREFERENCE_INFO_KT
+		(
+			PRF_SEQ
+			, KT_ID
+			, REG_DT
+		)
+		VALUES
+		(
+			#{prfSeq}
+			, #{userId}
+			, now()
+		)
+	</insert>
+	
+	<update id="updateUserPreferenceInfoKt" parameterType="Map">
+		/* mybatis.mapper.userkt.updateUserPreferenceInfoKt : kt비회선 사용자테이블 선호도 정보를 수정한다. (아이디기준) */
+		UPDATE 
+			TB_USER_KT
+		SET 
+			PRF_FLAG 	= #{prfFlag}
+			, PRF_DT = now()
+		WHERE
+			USER_ID = #{userId}
+	</update>
+	
+	<select id="getShopMemGradeInfo" parameterType="Map" resultType="UserInfo">
+		/* mybatis.mapper.userkt.getShopMemGradeInfo : shop 회원정보를 조회한다. (아이디기준) */
+		SELECT	COALESCE(KT_YN, 'N') AS KT_YN
+			,	EMAIL
+			,	MKT_RCV_YN
+			,	CASE WHEN COALESCE(BIRTH_DAY, '') != '' THEN EXTRACT(year from age(birth_day::date)) ELSE 0 END as CURRENT_AGE
+		FROM TB_USER_KT
+		WHERE	JOIN_STATUS = 'G0001'
+		AND		USER_ID = #{userId} 
+	</select>
+	
+	<insert id="insertKtUuid" parameterType="Map">
+		/* mybatis.mapper.userkt.insertKtUuid : ktid회원의 shop 연동 uuid정보를 등록한다. */
+		INSERT INTO TB_UUID_KT
+		(
+				USER_ID
+			,	UUID
+			,	REG_DT
+		)VALUES(
+				#{userId}
+			,	#{uuid}
+			,	now()
+		)
+	</insert>
+	
+	<select id="getKtUuidChk" parameterType="Map" resultType="int">
+		/* mybatis.mapper.userkt.getKtUuidChk : shop연동 uuid 중복 체크한다. */
+		SELECT	COUNT(UUID)
+		FROM TB_UUID_KT
+		WHERE	UUID = #{uuid}
+	</select>
+	
+	<select id="getKtUserIdChk" parameterType="Map" resultType="int">
+		/* mybatis.mapper.userkt.getKtUserIdChk : shop연동 userId 중복 체크한다. */
+		SELECT	COUNT(USER_ID)
+		FROM TB_UUID_KT
+		WHERE	USER_ID = #{userId}
+	</select>
+	
+	<select id="getShopUuidInfo" parameterType="Map" resultType="UserInfo">
+		/* mybatis.mapper.userkt.getShopUuidInfo : shop연동  uuid 정보를 조회한다. */
+		SELECT	USER_ID
+			,	UUID	AS	SHUD
+		FROM TB_UUID_KT
+		WHERE 1=1
+		<if test="userId != null and userId !=''">
+			AND USER_ID = #{userId}
+		</if>
+		<if test="uuid != null and uuid !=''">
+			AND UUID = #{uuid}
+		</if>
+	</select>
+</mapper>
+	
+	

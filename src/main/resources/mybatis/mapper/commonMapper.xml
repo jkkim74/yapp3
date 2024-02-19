@@ -1,0 +1,343 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mybatis.mapper.common">
+	
+	<select id="getGuideMsgInfo" resultType="GuideMsg">
+		/* mybatis.mapper.common.getGuideMsgInfo : 안내 메시지를 조회한다. */
+		SELECT 
+			  MSG_CD
+			, MSG_NM
+			, MSG_CONTENTS 
+		FROM 
+			TM_GUIDE_MSG
+		WHERE
+				USE_YN 		= 'Y'
+			AND MSG_CD		= #{msgCd}
+	</select>
+
+	<select id="getAuthFailCnt" resultType="AuthFail" useCache="true">
+		/* mybatis.mapper.common.getAuthFailCnt : 최근 인증 에러 카운트를 조회한다. */
+		SELECT 
+			  MOBILE_NO
+			, AUTH_TP
+			, FAIL_CNT
+			, LAST_FAIL_DT
+		FROM 
+			TB_AUTH_FAIL
+		WHERE
+				MOBILE_NO		= #{mobileNo}
+			AND AUTH_TP			= #{authTp}
+	</select>
+
+	<insert id="updateAuthFailCnt" parameterType="AuthFail">
+		/* mybatis.mapper.common.updateAuthFailCnt : 인증 실패 카운트를 업데이트 한다. */
+		WITH UPT_AUTH_FAIL AS (
+			UPDATE 
+				TB_AUTH_FAIL A
+			SET 
+				LAST_FAIL_DT = now()
+				<if test='isInit == "Y"'>
+					, FAIL_CNT = 0
+				</if>
+				<if test='isInit != "Y"'>
+					, FAIL_CNT = A.FAIL_CNT + 1
+				</if>
+			WHERE 
+					A.MOBILE_NO 		= #{mobileNo} 
+				AND A.AUTH_TP		 	= #{authTp}
+			RETURNING A.*
+		)
+		INSERT INTO TB_AUTH_FAIL
+		(
+			MOBILE_NO
+			, AUTH_TP
+			, FAIL_CNT
+			, LAST_FAIL_DT
+			, REG_DT
+		)
+		SELECT
+			#{mobileNo}
+			, #{authTp}
+			, 1
+			, now()
+			, now()
+		WHERE 
+			#{mobileNo} || #{authTp} NOT IN (SELECT MOBILE_NO || AUTH_TP FROM UPT_AUTH_FAIL)
+	</insert>
+
+	<select id="getAttachFile" resultType="AttachFile">
+		/* mybatis.mapper.common.getAttachFile : 첨부파일 정보를 조회한다. */
+		SELECT
+			  FILE_ID
+			, FILE_TP
+			, FILE_NM
+			, FILE_DATA
+			, REG_DT
+		FROM
+			TB_ATTACH_FILE
+		WHERE
+			FILE_ID		= #{fileId}
+	</select>
+
+	<select id="getSearchMsg" resultType="ErrMsg">
+		/* mybatis.mapper.common.getSearchMsg : 에러 메시지를 조회한다. */
+		SELECT 
+			ERR_MSG_ID
+			,ERR_MSG_CODE
+			,ERR_MSG_USE_TYPE
+			,ERR_MSG_ORG
+			,ERR_MSG
+			,REMARKS
+			,REG_DT
+			,MOD_DT
+		FROM 
+			TM_ERR_MSG
+		WHERE
+				ERR_MSG_ID		= #{errMsgId}
+			AND ERR_MSG_CODE	= #{errMsgCode}
+	</select>
+	
+	<select id="getDeviceTokenInfo" resultType="DeviceTokenInfo" parameterType="Map">
+		/* mybatis.mapper.common.getDeviceTokenInfo :단말기 device token 를 조회한다. */
+		SELECT
+			CNTR_NO
+			,OS_TP
+			,PUSH_DEVICE_TOKEN AS DEVICE_TOKEN_ID
+		FROM
+			TB_USER
+		WHERE
+			CNTR_NO = #{cntrNo}
+	</select>
+	
+	<update id="updateDeviceToken" parameterType="Map">
+		/* mybatis.mapper.common.updateDeviceToken : 단말기 device token을 저장한다. */
+		UPDATE 
+			TB_USER
+		SET
+			  PUSH_DEVICE_TOKEN  = #{deviceToken}
+			  <if test='osVrsn != null and osVrsn != ""'>
+			  ,OS_VRSN = #{osVrsn}
+			  </if>
+			  <if test='appVrsn != null and appVrsn != ""'>
+			  ,APP_VRSN = #{appVrsn}
+			  </if>
+			  ,PUSH_DEVICE_TOKEN_DT = now()
+		WHERE
+			CNTR_NO			= #{cntrNo}
+	</update>
+	
+	<select id="getDeviceTokenIdInfoKt" resultType="DeviceTokenInfo" parameterType="Map">
+		/* mybatis.mapper.common.getDeviceTokenInfoKt :220412 단말기 device token 를 조회한다. */
+		SELECT
+			USER_ID
+			,OS_TP
+			,APP_VRSN
+			,PUSH_DEVICE_TOKEN AS DEVICE_TOKEN_ID
+			,PUSH_RCV_YN
+		FROM
+			TB_USER_KT
+		WHERE
+			USER_ID = #{userId}
+	</select>
+	
+	<update id="updateDeviceTokenKt" parameterType="Map">
+		/* mybatis.mapper.common.updateDeviceTokenKt : 단말기 device token을 저장한다. */
+		UPDATE 
+			TB_USER_KT
+		SET
+			  PUSH_DEVICE_TOKEN  = #{deviceToken}
+			  <if test='osVrsn != null and osVrsn != ""'>
+			  ,OS_VRSN = #{osVrsn}
+			  </if>
+			  <if test='appVrsn != null and appVrsn != ""'>
+			  ,APP_VRSN = #{appVrsn}
+			  </if>
+  			  <if test='osTp != null and osTp != ""'>
+			  ,OS_TP = #{osTp}
+			  </if>
+			  ,PUSH_DEVICE_TOKEN_DT = now()
+		WHERE
+			USER_ID			= #{userId}
+	</update>
+	
+	<update id="updateRouteLink" parameterType="Map">
+		/* mybatis.mapper.common.updateRouteLink : 유입경로를 저장한다. */
+		INSERT INTO TH_ROUTE_LINK_INFO (
+			  ROUTE_LINK_TYPE
+			, REG_DT
+		) VALUES (
+			  #{linkType}
+			, now()
+		)
+	</update>
+
+	<select id="getSmsSendInfoCount" resultType="SmsAccessInfo" parameterType="Map">
+		/* mybatis.mapper.common.getSmsSendInfoCount :sms전송 정보 카운트 를 조회한다. */
+		SELECT
+			COUNT(1) AS COUNT
+		FROM TH_SMS_SEND_INFO
+		WHERE REG_DT > NOW() - INTERVAL '1'HOUR
+		AND ACCESS_IP_ADDR = #{accessIpAddr}
+		GROUP BY ACCESS_IP_ADDR
+	</select>
+
+	<update id="insertSmsSendInfo" parameterType="Map">
+		/* mybatis.mapper.common.insertSmsSendInfo : sms전송 정보를 저장한다. */
+		INSERT INTO TH_SMS_SEND_INFO (
+			ACCESS_IP_ADDR
+			, ETC
+			, REG_DT
+		) VALUES (
+			#{accessIpAddr}
+			, #{etc}
+			, now()
+		)
+	</update>
+	
+	<insert id="insertKmcAuthInfo" parameterType="KmcAuthInfo" useGeneratedKeys="true" keyProperty="kmcAuthSeq" keyColumn="kmc_auth_seq">
+		/* mybatis.mapper.common.insertKmcAuthInfo : KMC 인증 정보를 저장한다. */
+		INSERT INTO TH_KMC_AUTH (
+			KMC_REQ_DT
+			, RESULT
+			, CERT_MET
+			, PHONE_CORP
+			, PHONE_NUMBER
+			, REG_DT
+		) VALUES (
+			#{kmcReqDt}
+			, #{result}
+			, #{certMet}
+			, #{phoneCorp}
+			, #{phoneNumber}
+			, now()
+		)
+	</insert>
+
+	<select id="getKmcAuthInfo" resultType="KmcAuthInfo" parameterType="KmcAuthInfo">
+		/* mybatis.mapper.common.getKmcAuthInfo :KMC 인증 정보 를 조회한다. */
+		SELECT
+			RESULT
+		FROM
+			TH_KMC_AUTH
+		WHERE
+			KMC_AUTH_SEQ = #{kmcAuthSeq}::INT AND PHONE_NUMBER = #{phoneNumber}
+	</select>
+	
+	<insert id="insertSmsLogInfo" parameterType="SendSmsLogInfo" useGeneratedKeys="true" keyProperty="logSeq">
+		/* mybatis.mapper.common.insertSmsLogInfo : SMS 문자메시지 발송 로그를 저장한다. */
+		INSERT INTO TH_SEND_SMS_LOG (
+			  SERVICE_TYPE
+			, ACCESS_URL
+			, RCV_CTN
+			, CALL_CTN 
+			, CALLBACK_CTN
+			, MSG_CONTENT
+			, TRANSACTION_ID
+			, RESULT_CD
+			, RESULT_MSG
+			, SEND_DATE 
+		) VALUES (
+			  #{serviceType}
+			, #{accessUrl}
+			, #{rcvCtn}
+			, #{callCtn}
+			, #{callbackCtn}
+			, #{msgContent}
+			, #{transactionId}
+			, #{resultCd}
+			, #{resultMsg}
+			, now()
+		)
+	</insert>
+
+	<update id="updateSmsLogInfo" parameterType="SendSmsLogInfo">
+		/* mybatis.mapper.common.updateSmsLogInfo : SMS 문자메시지 발송  후 통신 결과를 업데이트 한다. */
+		UPDATE TH_SEND_SMS_LOG 
+		   SET transaction_id = #{transactionId}
+			 , result_cd      = #{resultCd}
+			 , result_msg     = #{resultMsg}
+		 WHERE log_seq = #{logSeq}
+	</update>
+	
+	<select id="getAppIosTrackingInfo" resultType="AppIosTracking" parameterType="AppIosTracking">
+		/* mybatis.mapper.common.getAppIosTrackingInfo : IOS앱 추적 정보를 조회한다. */
+		SELECT		AGREE_YN
+				,	OS_TP
+				,	OS_VRSN
+				,	APP_VRSN
+				,	REG_DT
+		FROM	TB_IOS_TRACKING
+		WHERE	CNTR_NO	=	#{cntrNo}
+	</select>
+	
+	<insert id="insertAppIosTrackingInfo" parameterType="AppIosTracking">
+		/* mybatis.mapper.common.insertAppIosTrackingInfo : IOS앱 추적 정보를 저장 한다. */
+		INSERT INTO TB_IOS_TRACKING (
+				CNTR_NO
+			,	AGREE_YN
+			,	OS_TP
+			,	OS_VRSN
+			,	APP_VRSN
+			,	REG_DT
+		) VALUES (
+				#{cntrNo}
+			,	#{agreeYn}
+			,	#{osTp}
+			,	#{osVrsn}
+			,	#{appVrsn}
+			,	now()
+		)
+	</insert>
+	
+	<update id="updateAppIosTrackingInfo" parameterType="AppIosTracking">
+		/* mybatis.mapper.common.updateAppIosTrackingInfo : IOS앱 추적 정보를 UPDATE 한다. */
+		UPDATE TB_IOS_TRACKING 
+		   SET AGREE_YN		= #{agreeYn}
+			 , OS_TP     	= #{osTp}
+			 , OS_VRSN      = #{osVrsn}
+ 			 , APP_VRSN     = #{appVrsn}
+			 , MOD_DT       = now()
+		 WHERE CNTR_NO = #{cntrNo}
+	</update>
+	
+	<select id="getAppIosTrackingInfoKt" resultType="AppIosTracking" parameterType="AppIosTracking">
+		/* mybatis.mapper.common.getAppIosTrackingInfoKt : 220406 kt비회선 IOS앱 추적 정보를 조회한다. */
+		SELECT		AGREE_YN
+				,	OS_TP
+				,	OS_VRSN
+				,	APP_VRSN
+				,	REG_DT
+		FROM	TB_IOS_TRACKING_KT
+		WHERE	KT_ID	=	#{userId}
+	</select>
+	
+	<insert id="insertAppIosTrackingInfoKt" parameterType="AppIosTracking">
+		/* mybatis.mapper.common.insertAppIosTrackingInfoKt : 220406 kt비회선 IOS앱 추적 정보를 저장 한다. */
+		INSERT INTO TB_IOS_TRACKING_KT (
+				KT_ID
+			,	AGREE_YN
+			,	OS_TP
+			,	OS_VRSN
+			,	APP_VRSN
+			,	REG_DT
+		) VALUES (
+				#{userId}
+			,	#{agreeYn}
+			,	#{osTp}
+			,	#{osVrsn}
+			,	#{appVrsn}
+			,	now()
+		)
+	</insert>
+	
+	<update id="updateAppIosTrackingInfoKt" parameterType="AppIosTracking">
+		/* mybatis.mapper.common.updateAppIosTrackingInfoKt : 220406 kt비회선 IOS앱 추적 정보를 UPDATE 한다. */
+		UPDATE TB_IOS_TRACKING_KT 
+		   SET AGREE_YN		= #{agreeYn}
+			 , OS_TP     	= #{osTp}
+			 , OS_VRSN      = #{osVrsn}
+ 			 , APP_VRSN     = #{appVrsn}
+			 , MOD_DT       = now()
+		 WHERE KT_ID	=	#{userId}
+	</update>
+</mapper>

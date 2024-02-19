@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mybatis.mapper.dbox">
+	
+	<insert id="insertDboxPullInfo" parameterType="Map">
+		/* mybatis.mapper.dbox.insertDboxPullInfo : 꺼내기 정보를 추가한다. */
+		INSERT INTO TB_DBOX_PULL_INFO
+		(
+			  CNTR_NO
+			, DATA_AMT
+			, PULL_YM
+			, REG_DT
+		) VALUES (
+			  #{cntrNo}
+			, #{dataAmt}
+			, TO_CHAR(now(), 'YYYYMM')
+			, now()
+		)
+	</insert>
+	
+	<select id="getDboxPullInfo" resultType="DataboxPullInfo">
+		/* mybatis.mapper.dbox.getDboxPullInfo : 데이터박스 꺼내기 정보를 조회한다.(당월) */
+		SELECT
+			  CNTR_NO
+			, SUM(DATA_AMT) 	AS DBOX_PULL_DATA_AMT
+			, COUNT(*) 			AS DBOX_PULL_CNT
+			, MAX(REG_DT)		AS MAX_REG_DT
+		FROM
+			TB_DBOX_PULL_INFO
+		WHERE
+				CNTR_NO		= #{cntrNo}
+			AND PULL_YM		= TO_CHAR(now(), 'YYYYMM')::bpchar
+		GROUP BY
+			  DBOX_ID
+			, CNTR_NO
+	</select>
+
+	<select id="getDboxPullInfoList" resultType="DataboxPullInfo">
+		/* mybatis.mapper.dbox.getDboxPullInfoList : 데이터박스 꺼내기 정보 목록을 조회한다.(당월) */
+		SELECT
+			  DBOX_ID
+			, CNTR_NO
+			, DATA_AMT
+			, SUM(DATA_AMT) OVER()			AS SUM_DBOX_PULL_DATA_AMT
+			, COUNT(*) 		OVER()			AS SUM_DBOX_PULL_DATA_CNT
+			, MAX(REG_DT)					AS MAX_REG_DT
+		FROM
+			TB_DBOX_PULL_INFO
+		WHERE
+				CNTR_NO		= #{cntrNo}
+			AND PULL_YM		= TO_CHAR(now(), 'YYYYMM')::bpchar
+	</select>
+
+	
+</mapper>

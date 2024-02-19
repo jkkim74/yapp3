@@ -1,0 +1,38 @@
+
+@font-face {
+  font-family: 'NotoSansCJKkr';
+  src: url('../font/NotoSansCJKkr-Regular.eot');
+  src: url('../font/NotoSansCJKkr-Regular.eot?#iefix') format('embedded-opentype'),
+       url('../font/NotoSansCJKkr-Regular.svg#NotoSansCJKkr-Regular') format('svg'),
+       url('../font/NotoSansCJKkr-Regular.ttf') format('truetype'),
+       url('../font/NotoSansCJKkr-Regular.woff') format('woff'),
+       url('../font/NotoSansCJKkr-Regular.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'NotoSansCJKkr';
+  src: url('../font/NotoSansCJKkr-Bold.eot');
+  src: url('../font/NotoSansCJKkr-Bold.eot?#iefix') format('embedded-opentype'),
+       url('../font/NotoSansCJKkr-Bold.svg#NotoSansCJKkr-Bold') format('svg'),
+       url('../font/NotoSansCJKkr-Bold.ttf') format('truetype'),
+       url('../font/NotoSansCJKkr-Bold.woff') format('woff'),
+       url('../font/NotoSansCJKkr-Bold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'yspotlightotapp';
+  src: url('../font/yspotlightotapp.eot');
+  src: url('../font/yspotlightotapp.eot?#iefix') format('embedded-opentype'),
+       url('../font/yspotlightotapp.svg#yspotlightotapp') format('svg'),
+       url('../font/yspotlightotapp.ttf') format('truetype'),
+       url('../font/yspotlightotapp.woff') format('woff'),
+       url('../font/yspotlightotapp.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+}
+
+body{font-family:'NotoSansCJKkr', sans-serif;}

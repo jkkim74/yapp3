@@ -1,0 +1,114 @@
+#spring.datasource.type=org.postgresql.ds.PGSimpleDataSource
+#spring.datasource.driverClassName=net.sf.log4jdbc.sql.jdbcapi.DriverSpy
+#spring.datasource.url=jdbc:log4jdbc:postgresql://10.220.170.245:5432/plany?charSet=UTF-8&prepareThreshold=1
+#spring.datasource.url=jdbc:log4jdbc:postgresql://10.220.170.250:5432/plany?charSet=UTF-8&prepareThreshold=1
+#spring.datasource.ucode=cGxhbnk=
+#spring.datasource.pcode=bmV3MTIzNCE=
+spring.datasource.jndi-name=java:/jdbc/planyDS
+
+##### SHUB SETTING #####
+# OIF_003
+shub.dataretrievalmanager.endpoint.url=https://cus.api.kt.com/dataRetrieval/DataRetrievalManager
+# OIF_101
+shub.uumdataretrieval.endpoint.url=https://cus.api.kt.com/UUMDataRetrieval/UUMDataRetrievalSSL
+# OIF_107
+shub.authentication.endpoint.url=https://cus.api.kt.com/authentication/AuthenticationManagerSSL
+# OIF_110
+shub.dataretrieval.endpoint.url=https://cus.api.kt.com/dataRetrieval/DataRetrievalManagerSSL
+# OIF_140
+shub.subscriptioninforetrieval.endpoint.url=https://cus.api.kt.com/SubscriptionInfoRetrieval/SubscriptionInfoRetrievalManagerSSL
+# OIF_494
+shub.cpn.endpoint.url=https://int.api.kt.com/couponmgr/CouponManager
+# OIF_750
+shub.vas.endpoint.url=https://int.api.kt.com/vas/VasManager
+# OIF_2118
+shub.msg.endpoint.url=https://msg.api.kt.com/MESG
+# 198 rest url
+shub.authentication.rest.url=https://id.api.kt.com/rest/mobileappsso/getTokenIdByDecoding
+# OIF_200
+shub.authentication.url=https://id.api.kt.com/authentication/AuthenticationManagerSSL
+# OIF_809
+shub.couponpkgsearch.rest.url=https://int.api.kt.com/cupi/CouponPkgSearch
+# OIF_810
+shub.couponpkgsearchlist.rest.url=https://int.api.kt.com/cupi/CouponPkgSearchList
+# OIF_812
+shub.couponendsearch.rest.url=https://int.api.kt.com/cupi/CouponEndSearch
+# OIF_813
+shub.couponcustomerdetail.rest.url=https://int.api.kt.com/cupi/CouponCustomerDetail
+# OIF_11267
+shub.custagreeinforetv.rest.url=https://kos.api.kt.com/kos/v1.0/CustAgreeInfoRetv
+# OIF_11268
+shub.custagreeinforegwthd.rest.url=https://kos.api.kt.com/kos/v1.0/CustAgreeInfoRegWthd
+
+# id
+shub.conn.id=AII1280055158ONCJDA
+# pwd
+shub.conn.pwd=SVK1280055158OKDBGA
+# 8be442451b8f75d0
+# 0102030405060708
+shub.rest.conn.k=OGJlNDQyNDUxYjhmNzVkMA==
+shub.rest.conn.i=MDEwMjAzMDQwNTA2MDcwOA==
+
+# KOS Dynamic Service SO URL
+kos.dynamicsvc.endpoint.url=http://10.219.3.190:5000/SoapDynamicGateway
+kos.svc2.endpoint.url=http://10.219.3.110:5000/SoapGateway
+kos.svc.endpoint.url=http://10.219.3.190:5000/SoapGateway
+kos.retrievedrctlyuseqnt.endpoint.url=http://10.219.3.190:5000/SoapGateway
+kos.dataSharUseRetv.endpoint.url=http://10.219.3.190:5000/SoapDynamicGateway
+kos.dataSharUseRetv.endpoint.url2=http://10.219.3.190:5000/SoapDynamicGateway
+kos.rds.endpoint.url=http://10.219.3.130:5000/SoapDynamicGateway
+
+# Membership Point
+mem.point.get=https://vipcom.kt.com/service/CustCombineInfoService
+mem.point.use=https://vipcom.kt.com/service/PointPrcService
+mem.point.acu=https://vipcom.kt.com/service/PointAcuService
+
+
+yapp.url=https://ybox.kt.com/yapp3/execYapp.html
+yapp.gift.url=https://ybox.kt.com/gift.html
+yapp.request.url=https://ybox.kt.com/request.html
+yapp.share.url=https://ybox.kt.com/share.html
+yapp.invite.url=https://ybox.kt.com/invite.html
+
+server.ip.val=10.220.170.243
+
+initsafe.proppath=/jboss/key/INISAFENet-prod.properties
+initsafe.royalty.proppath=/jboss/key/INISAFENet_Royalty-prod.properties
+
+apns.certificate.path=/jboss/key/apns-yapp-production.p12
+#apns.certificate.path=/jboss/key/ydatabox_APNS_Distribution_20180102.p12
+
+fcm.api.serverkey=AAAAFqdxPIk:APA91bF-2f5fwVdfxkXizbCIFhWn41jNBDGwcoyM4aAnhPIx2D_sDoQsNabcXAgA9eMomZkB23nUfm1c050EuQCijkGm2U2Nuo14cXJePstVvopM947XbQ1cMVbisYteQM7bQ6BUfftO 
+
+#spring.redis.host =10.220.170.41
+#spring.redis.password=test
+#spring.redis.port=6379
+spring.redis.sentinel.master=mymaster
+spring.redis.sentinel.nodes=10.220.170.41:26379,10.220.170.42:26379,10.220.170.71:26379
+kmc.url.code=001001
+
+#PROD
+kmc.target.url=https://ybox.kt.com/yapp3/na/kmc/auth/ok
+
+#SIT 
+#kmc.target.url=https://beta.ybox.kt.com/yapp3/na/kmc/auth/ok
+
+lamp.service.name=BG010101
+lamp.server.type=SV002
+lamp.log.path=/home/lampadmin/logs/
+lamp.log.servicedomain=Y\uBC15\uC2A4
+
+profile.name=prod
+
+yshop.rsa.publicKey=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCahSvopovGxHJ/ivlAyX1FWjzZJAz8rH/K7Yp/L1kbZCkbaP6Y1YsD3doLtbD9svACWjYWqg8rKoTIUeD5PNNj6qDmQYXqXPnXaWLk6eQpXs+wObIpCR+oYL/tpM9q6cHBhMGe61W6D3LECLzeONGTlWBJfbdR4qCHpTJJ1EF5lQIDAQAB
+yshop.rsa.privateKey=MIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAJqFK+imi8bEcn+K+UDJfUVaPNkkDPysf8rtin8vWRtkKRto/pjViwPd2gu1sP2y8AJaNhaqDysqhMhR4Pk802PqoOZBhepc+ddpYuTp5Clez7A5sikJH6hgv+2kz2rpwcGEwZ7rVboPcsQIvN440ZOVYEl9t1HioIelMknUQXmVAgMBAAECgYBtfUudsNV+ZJjVMz5m3976E3TmUBs7t2dd/W+Tq5MyS4itOXqeBUJZ3QuyHG5rdi2HHTESYjIZXil0YEBPmwAVw5jeogZ7akaDISBx5v12AfXMSahC1AccB+gljnRNy9WMVfzyZ5LuEa2SittYQs0Dfz6aCvi2BsFaitTkWFgLgQJBANm9OBqUPrCcbzG+n3Rs5zviCHEah2tXg1SEmvb6f5aeboRbcI0ZOPHEq8irFyceXQ48mQ3dS9QOigWmtyjN+tECQQC1rBxYupRZrKOoVc77gXwF9FuGBIFG70YTDjWzaU828EDeA8QJKBZR7oET8jpF9vZ39PH5fT//pS3K2zbdcDuFAkB9etZCOvyFuyE5galS5w+7Kt/Cjo9MBPriUikb+/BbVKJMFIYgSlDOw5Bb7H1DRfRKqBFsNAPnCRnxd8pF8a6BAkAOHBnvgj43YMMtNcznl7zsMXhSRlNMERVeMYJWNt2iJLLFC4HUPDrPjjiUNgH0oSOvWWTZvbKUxl1yHeh69laJAkEAgJePASXgaIgIYwcit9knyA3oE1bkW533Lt/MG+uoQraSaZh2JWvft2WC3nZqIt9KlWJAXS4DmaL3dQ2/MfWqNQ==
+
+# \uC628\uB9C8\uC2DC \uBC30\uB108 API \uC815\uBCF4
+# YBOX \uBA54\uC778
+om.banner.url=https://offer.onmas.kt.com/offer/v1.0/yA/getBannerAppLst
+om.banner.main.zoneCode=OFFERAREA244,OFFERAREA245
+# YBOX \uD3EC\uC778\uD2B8\uCDA9\uC804
+om.banner.point.url=https://offer.onmas.kt.com/offer/v1.0/yA/getBannerApp
+om.banner.point.zoneCode=OFFERAREA247
+om.banner.after.zoneCode=OFFERAREA246
+om.banner.gtdata.zoneCode=OFFERAREA248

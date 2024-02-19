@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<env:Envelope xmlns:env="http://schemas.xmlsoap.org/soap/envelope/"
+              xmlns:ag="http://xml.kt.com/sdp/so/BS/MessageMTMMSReportNoNetCharge"
+              xmlns:oas="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"
+              xmlns:sdp="http://kt.com/sdp">
+    <env:Header/>
+    <env:Body>
+        <sdp:authenticateUserNamePwdResponse>
+            <sdp:transaction_id xmlns:sdp="http://kt.com/sdp">57941aa9-9651-42e2-a897-21feb536a55c</sdp:transaction_id>
+            <sdp:sequence_no xmlns:sdp="http://kt.com/sdp">4</sdp:sequence_no>
+            <sdp:errordetail xmlns:sdp="http://kt.com/sdp">
+                <sdp:errorcode>200001</sdp:errorcode>
+                <sdp:errordescription>Internal Exception : API timeout</sdp:errordescription>
+            </sdp:errordetail>
+            <sdp:return_code xmlns:sdp="http://kt.com/sdp">0</sdp:return_code>
+            <sdp:return_desc xmlns:sdp="http://kt.com/sdp">Fail</sdp:return_desc>
+        </sdp:authenticateUserNamePwdResponse>
+    </env:Body>
+</env:Envelope>

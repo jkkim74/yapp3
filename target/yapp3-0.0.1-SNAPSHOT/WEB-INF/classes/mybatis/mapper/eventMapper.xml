@@ -1,0 +1,1142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+ * yfriendsMapper.xml
+ * 
+ * @author kibon.kim
+ * @since 2020. 8. 31.
+ * @version 1.0
+ * 
+ * Modification Information
+ * Mod Date		Modifier		Description
+ * ========================================
+ * 2020. 8. 31.	kkb 			최초작성
+ * Copyright (c) 2018 KTDS, Inc. All Rights Reserved
+ -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mybatis.mapper.event">
+	<select id="getEventMainList" resultType="EventMaster">
+		/* mybatis.mapper.event.getEventMainList : 이벤트 메인화면 록록을 조회한다. */
+		SELECT 
+			AA.EVT_SEQ
+			, AA.EVT_TYPE
+			, AA.EVT_TYPE_NM
+			, AA.EVT_TITLE
+			, AA.EVT_SMALL_TITLE
+			, AA.EVT_START_DT
+			, AA.EVT_END_DT
+			, AA.MAIN_IMG
+			, AA.ORDER_PRIORITY
+			, AA.PROGRESS_TYPE
+			, AA.D_DAY
+			, AA.BOARD_IMG
+			, AA.EVT_OPTION_TITLE
+		FROM
+		(
+			SELECT 
+				A.EVT_SEQ
+				, A.EVT_TYPE
+				, (SELECT CODE_NM FROM TM_GROUP_CODE WHERE GRP_CODE_ID = 'RN_EVENT_TYPE' AND CODE_ID = A.EVT_TYPE) AS EVT_TYPE_NM
+				, A.EVT_TITLE 
+				, A.EVT_SMALL_TITLE 
+				, TO_CHAR(TO_DATE(A.EVT_START_DT, 'YYYYMMDDHH24MI'), 'YYYY-MM-DD') AS EVT_START_DT 
+				, TO_CHAR(TO_DATE(A.EVT_END_DT, 'YYYYMMDDHH24MI'), 'YYYY-MM-DD') AS EVT_END_DT 
+				, A.MAIN_IMG 
+				, A.BOARD_IMG
+				, A.EVT_OPTION_TITLE
+				, (CASE 
+					WHEN  TO_CHAR(NOW(), 'YYYYMMDDHH24MI') <![CDATA[ > ]]> EVT_END_DT THEN A.ORDER_PRIORITY
+									ELSE TRUNC(RANDOM() * 10) <![CDATA[ + ]]> (A.ORDER_PRIORITY * 1000)
+				 END) AS ORDER_PRIORITY
+				, CASE 
+					WHEN TO_CHAR(now(), 'YYYYMMDDHH24MI') <![CDATA[ < ]]>  EVT_START_DT THEN 'P' 
+					WHEN (TO_CHAR(now(), 'YYYYMMDDHH24MI') BETWEEN EVT_START_DT AND EVT_END_DT) = TRUE THEN 'I' 
+					ELSE 'E' END	AS PROGRESS_TYPE
+				, CASE 
+					WHEN TO_CHAR(now(), 'YYYYMMDDHH24MI') <![CDATA[ < ]]>  EVT_START_DT THEN '2' 
+					WHEN (TO_CHAR(now(), 'YYYYMMDDHH24MI') BETWEEN EVT_START_DT AND EVT_END_DT) = TRUE THEN '3' 
+					ELSE '1' END	AS PROGRESS_ORDER
+				, (CASE 
+					WHEN TO_DATE(A.EVT_END_DT, 'YYYYMMDDHH24MI') - TO_DATE(TO_CHAR(NOW(), 'YYYYMMDD'), 'YYYYMMDD') <![CDATA[ < ]]> 0 THEN NULL
+					ELSE TO_DATE(A.EVT_END_DT, 'YYYYMMDDHH24MI') - TO_DATE(TO_CHAR(NOW(), 'YYYYMMDD'), 'YYYYMMDD') END
+				) AS D_DAY
+			FROM TB_EVENT_MASTER A
+			WHERE A.USE_YN = 'Y'  
+			AND	A.EVT_TYPE != 'G0009'
+			<if test='adminYn == "N"'>
+			AND (A.EVT_TEST_YN  NOT IN('Y') OR A.EVT_TEST_YN IS NULL)
+			</if>
+			AND TO_CHAR(now(), 'YYYYMMDDHH24MI') <![CDATA[ >= ]]>  A.EVT_START_DT
+		) AA
+		ORDER BY AA.PROGRESS_ORDER DESC, AA.ORDER_PRIORITY DESC
+	</select>
+	
+	<select id="getEventDetailMaster" resultType="EventMaster">
+		/* mybatis.mapper.event.getEventDetailMaster : 이벤트 상세화면을 조회한다. */
+		SELECT 
+			A.EVT_SEQ
+			, A.EVT_TYPE
+			, (SELECT CODE_NM FROM TM_GROUP_CODE WHERE GRP_CODE_ID = 'RN_EVENT_TYPE' AND CODE_ID = A.EVT_TYPE) AS EVT_TYPE_NM
+			, A.EVT_TITLE
+			, A.BTITLE_COLOR_CODE
+			, A.EVT_SMALL_TITLE
+			, A.STITLE_COLOR_CODE
+			, TO_CHAR(TO_DATE(A.EVT_START_DT, 'YYYYMMDDHH24MI'), 'YYYY.MM.DD') AS EVT_START_DT 
+			, TO_CHAR(TO_DATE(A.EVT_END_DT, 'YYYYMMDDHH24MI'), 'YYYY.MM.DD') AS EVT_END_DT 
+			, A.GIFT_OFFER_TYPE
+			, TO_CHAR(TO_DATE(A.ETR_OPEN_DT, 'YYYYMMDDHH24MI'), 'YYYY.MM.DD') AS ETR_OPEN_DT
+			, (CASE 
+					WHEN EXTRACT(ISODOW FROM TO_DATE(A.ETR_OPEN_DT, 'YYYYMMDDHH24MI')) = 1 THEN '월' 
+					WHEN EXTRACT(ISODOW FROM TO_DATE(A.ETR_OPEN_DT, 'YYYYMMDDHH24MI')) = 2 THEN '화' 
+					WHEN EXTRACT(ISODOW FROM TO_DATE(A.ETR_OPEN_DT, 'YYYYMMDDHH24MI')) = 3 THEN '수' 
+					WHEN EXTRACT(ISODOW FROM TO_DATE(A.ETR_OPEN_DT, 'YYYYMMDDHH24MI')) = 4 THEN '목' 
+					WHEN EXTRACT(ISODOW FROM TO_DATE(A.ETR_OPEN_DT, 'YYYYMMDDHH24MI')) = 5 THEN '금' 
+					WHEN EXTRACT(ISODOW FROM TO_DATE(A.ETR_OPEN_DT, 'YYYYMMDDHH24MI')) = 6 THEN '토' 
+					WHEN EXTRACT(ISODOW FROM TO_DATE(A.ETR_OPEN_DT, 'YYYYMMDDHH24MI')) = 7 THEN '일'
+				END
+			) AS ETR_OPEN_DWEEK
+			, TO_CHAR(TO_TIMESTAMP(A.ETR_OPEN_DT, 'YYYYMMDDHH24MI'), 'HH24:MI') AS ETR_OPEN_TIME
+			, A.EVT_NOTE_YN
+			, A.EVT_NOTE
+			, A.GIFT_CHOICE_TYPE
+			, A.ORDER_PRIORITY
+			, A.BOTTOM_BUTTON_NAME
+			, A.LINK_TYPE
+			<if test='osTp == "G0001"'>
+			, A.LINK_URL
+			</if>
+			<if test='osTp == "G0002"'>
+			, A.SUB_LINK_URL AS LINK_URL
+			</if>
+			, A.EVT_LOGO_IMG
+			, A.MAIN_IMG
+			, A.BOARD_IMG
+			, A.USE_YN
+			, (CASE WHEN USE_YN = 'N' THEN 'Y' WHEN TO_TIMESTAMP(A.EVT_END_DT, 'YYYYMMDDHH24MI') <![CDATA[ < ]]> NOW() THEN 'Y' ELSE 'N' END) AS END_YN
+			, A.EVT_DTL_TOP_IMG
+			, A.LNB_BOTTOM_IMG
+			, A.LNB_BOTTOM_IMG_YN
+			, CASE 
+				WHEN TO_CHAR(now(), 'YYYYMMDDHH24MI') <![CDATA[ < ]]>  EVT_START_DT THEN 'P' 
+				WHEN (TO_CHAR(now(), 'YYYYMMDDHH24MI') BETWEEN EVT_START_DT AND EVT_END_DT) = TRUE THEN 'I' 
+				ELSE 'E' END	AS PROGRESS_TYPE
+			, A.EVT_OPTION_TITLE
+			, A.GIFT_FORM_NM
+			, A.TICKET_YN
+			, A.GIFT_ADDR_YN
+			, A.GIFT_MULTI_REWARD
+			, A.TARGET_MEM
+			, A.REPLY_YN
+			, A.PP_CD_L
+			, A.PP_CD_LIST
+			, A.GENDER
+			, A.AGE_LIST
+			, A.AGE_START_NUM
+			, A.AGE_END_NUM
+			, A.TARGET_BUTTON_YN
+			, A.TARGET_BUTTON_URL
+			, A.TARGET_BUTTON_NM
+			, A.VAS_CD_L
+			, A.VAS_CD_LIST
+			, A.GIFT_MAX_CHOICE
+		FROM PLANY.TB_EVENT_MASTER A
+		WHERE A.EVT_SEQ = #{evtSeq}
+	</select>
+	
+	<select id="getEventDetailContentList" resultType="EventContent">
+		/* mybatis.mapper.event.getEventDetailContentList : 이벤트 상세화면 컨텐츠 목록을 조회한다. */
+		SELECT 
+			A.CON_SEQ
+			, A.EVT_SEQ
+			, A.CON_TYPE
+			, A.CON_DTL_TYPE
+			, A.CON_DTL
+			, A.COLOR_CODE
+			, A.CON_ORDER
+			, split_part(A.CON_DTL, 'embed/', 2) AS YOUTUBE_ID
+		FROM TB_EVENT_CONTENT A
+		WHERE EVT_SEQ = #{evtSeq}
+		ORDER BY A.CON_ORDER
+	</select>
+	
+	<select id="getEventDetailGiftList" resultType="EventGift">
+		/* mybatis.mapper.event.getEventDetailGiftList : 이벤트 상세화면 상품 목록을 조회한다. */
+		SELECT 
+			C.GIFT_NAME
+			, C.GIFT_SEQ
+			, (CASE WHEN A.GIFT_CNT = A.ISSUE_CNT THEN C.SOLD_IMG_URL ELSE C.IMG_URL END) AS IMG_URL
+			, A.GIFT_CNT
+			, A.ISSUE_SEQ
+			, A.ISSUE_CNT
+			, A.EVT_SEQ
+			, A.MEM_NUM
+			, C.GIFT_TYPE
+			, C.VALID_START_DT
+			, C.VALID_END_DT
+			, C.REWARD_TYPE
+		FROM TB_GIFT_ISSUE_INFO A
+		INNER JOIN TB_EVENT_MASTER B ON A.EVT_SEQ = B.EVT_SEQ
+		INNER JOIN TB_GIFT_MASTER C ON A.GIFT_SEQ = C.GIFT_SEQ
+		WHERE A.EVT_SEQ = #{evtSeq}
+		--AND	C.GIFT_TYPE != 'G0004'
+		<if test='giftSeq != null and giftSeq != ""'>
+			AND C.GIFT_SEQ = #{giftSeq}
+		</if>
+		ORDER BY A.ISSUE_SEQ
+	</select>
+	
+	<select id="getEventDetailOfflineGiftList" resultType="EventGift">
+		/* mybatis.mapper.event.getEventDetailOfflineGiftList : 이벤트 상세화면 상품 목록을 조회한다. */
+		SELECT 
+			C.GIFT_NAME
+			, C.GIFT_SEQ
+			, (CASE WHEN A.GIFT_CNT = A.ISSUE_CNT THEN C.SOLD_IMG_URL ELSE C.IMG_URL END) AS IMG_URL
+			, A.GIFT_CNT
+			, A.ISSUE_SEQ
+			, A.ISSUE_CNT
+			, A.EVT_SEQ
+			, A.MEM_NUM
+			, C.GIFT_TYPE
+		FROM TB_GIFT_ISSUE_INFO A
+		INNER JOIN TB_EVENT_MASTER B ON A.EVT_SEQ = B.EVT_SEQ
+		INNER JOIN TB_GIFT_MASTER C ON A.GIFT_SEQ = C.GIFT_SEQ
+		WHERE A.EVT_SEQ = #{evtSeq}
+		AND A.GIFT_TYPE = 'G0001'
+		ORDER BY A.ISSUE_SEQ
+	</select>
+	
+	<select id="getEventDetailDataCpGiftList" resultType="EventGift">
+		/* mybatis.mapper.event.getEventDetailDataCpGiftList : 데이터 상품 목록을 조회한다. */
+		SELECT 
+			C.GIFT_NAME
+			, C.GIFT_SEQ
+			, (CASE WHEN A.GIFT_CNT = A.ISSUE_CNT THEN C.SOLD_IMG_URL ELSE C.IMG_URL END) AS IMG_URL
+			, A.GIFT_CNT
+			, A.ISSUE_SEQ
+			, A.ISSUE_CNT
+			, A.EVT_SEQ
+			, A.MEM_NUM
+			, C.GIFT_TYPE
+		FROM TB_GIFT_ISSUE_INFO A
+		INNER JOIN TB_EVENT_MASTER B ON A.EVT_SEQ = B.EVT_SEQ
+		INNER JOIN TB_GIFT_MASTER C ON A.GIFT_SEQ = C.GIFT_SEQ
+		WHERE A.EVT_SEQ = #{evtSeq}
+		AND A.GIFT_TYPE = 'G0004'
+		ORDER BY A.ISSUE_SEQ
+	</select>
+	
+	<select id="getEventDetailOnlineGiftList" resultType="EventGift">
+		/* mybatis.mapper.event.getEventDetailOnlineGiftList : 이벤트 상세화면 상품 목록을 조회한다. */
+		SELECT 
+			C.GIFT_NAME
+			, C.GIFT_SEQ
+			, (CASE WHEN A.GIFT_CNT = A.ISSUE_CNT THEN C.SOLD_IMG_URL ELSE C.IMG_URL END) AS IMG_URL
+			, A.GIFT_CNT
+			, A.ISSUE_SEQ
+			, A.ISSUE_CNT
+			, A.EVT_SEQ
+			, A.MEM_NUM
+			, C.GIFT_TYPE
+		FROM TB_GIFT_ISSUE_INFO A
+		INNER JOIN TB_EVENT_MASTER B ON A.EVT_SEQ = B.EVT_SEQ
+		INNER JOIN TB_GIFT_MASTER C ON A.GIFT_SEQ = C.GIFT_SEQ
+		WHERE A.EVT_SEQ = #{evtSeq}
+		AND A.GIFT_TYPE = 'G0002'
+		ORDER BY A.ISSUE_SEQ
+	</select>
+	
+	<select id="getAttendEventAllGiftList" resultType="EventGift">
+		/* mybatis.mapper.event.getAttendEventAllGiftList : 210825 출석체크/응모권출석체크 전체경품 조회한다. */
+		SELECT 
+			  C.GIFT_NAME
+			, CONCAT(D.GIFT_DAY,'일차 ',C.GIFT_NAME) AS TICKET_GIFT_NAME
+			, C.GIFT_SEQ
+			, (CASE WHEN A.GIFT_CNT = A.ISSUE_CNT THEN C.SOLD_IMG_URL ELSE C.IMG_URL END) AS IMG_URL
+			, A.GIFT_CNT
+			, A.EVT_SEQ
+			, C.GIFT_TYPE
+		FROM TB_GIFT_ISSUE_INFO A
+		INNER JOIN TB_EVENT_MASTER B ON A.EVT_SEQ = B.EVT_SEQ
+		INNER JOIN TB_GIFT_MASTER C ON A.GIFT_SEQ = C.GIFT_SEQ
+		LEFT OUTER JOIN TB_ATTEND_INFO D ON A.EVT_SEQ = D.EVT_SEQ AND A.ISSUE_SEQ = D.ISSUE_SEQ
+		WHERE A.EVT_SEQ = #{evtSeq}
+		ORDER BY A.ISSUE_SEQ
+	</select>
+	
+	<select id="getEventJoinCount" resultType="Integer">
+		/* mybatis.mapper.event.getEventJoinCount : 이벤트 경품 지급완료 횟수를 조회한다. 20210811 응모권리워드테이블추가 */
+		SELECT 
+		<choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+				COUNT(C.ISSUE_SEQ) + COUNT(D.ISSUE_SEQ) + COUNT(E.ISSUE_SEQ) + COUNT(F.ISSUE_SEQ) AS CNT
+        	</when>
+        	<otherwise>
+				COUNT(C.ISSUE_SEQ) + COUNT(D.ISSUE_SEQ) + COUNT(E.ISSUE_SEQ) AS CNT
+        	</otherwise>
+        </choose>
+		FROM TB_EVENT_MASTER A 
+		INNER JOIN TB_GIFT_ISSUE_INFO B ON A.EVT_SEQ = B.EVT_SEQ
+		<choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+				LEFT OUTER JOIN TB_ENTRY_INFO C ON C.ISSUE_SEQ = B.ISSUE_SEQ AND C.RECV_CNTR_NO = #{cntrNo}
+				LEFT OUTER JOIN TB_REWARD_INFO D ON D.ISSUE_SEQ = B.ISSUE_SEQ AND D.CNTR_NO = #{cntrNo}
+				LEFT OUTER JOIN TB_TICKET_REWARD_INFO E ON E.ISSUE_SEQ = B.ISSUE_SEQ AND E.CNTR_NO = #{cntrNo}
+				LEFT OUTER JOIN TB_DATA_REWARD_INFO F ON F.ISSUE_SEQ = B.ISSUE_SEQ AND F.CNTR_NO = #{cntrNo}
+        	</when>
+        	<otherwise>
+				LEFT OUTER JOIN TB_ENTRY_INFO C ON C.ISSUE_SEQ = B.ISSUE_SEQ AND C.RECV_USER_ID = #{userId}
+				LEFT OUTER JOIN TB_REWARD_INFO D ON D.ISSUE_SEQ = B.ISSUE_SEQ AND D.USER_ID = #{userId}
+				LEFT OUTER JOIN TB_TICKET_REWARD_INFO E ON E.ISSUE_SEQ = B.ISSUE_SEQ AND E.USER_ID = #{userId}
+        	</otherwise>
+        </choose>
+		WHERE A.EVT_SEQ = #{evtSeq}
+		GROUP BY A.EVT_SEQ
+	</select>
+	
+	<select id="getAttendEventJoinCount" resultType="Integer">
+		/* mybatis.mapper.event.getAttendEventJoinCount : 이벤트 참여 횟수를 조회한다.(출석체크) */
+		SELECT 
+			COUNT(C.ISSUE_SEQ) + COUNT(D.ISSUE_SEQ) AS CNT
+		FROM TB_EVENT_MASTER A 
+		INNER JOIN TB_GIFT_ISSUE_INFO B ON A.EVT_SEQ = B.EVT_SEQ
+		<choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+				LEFT OUTER JOIN TB_ENTRY_INFO C ON C.ISSUE_SEQ = B.ISSUE_SEQ AND C.RECV_CNTR_NO = #{cntrNo} AND B.ISSUE_SEQ = (SELECT (COALESCE(MAX(CHECK_DAY), 0) + 1) AS CNT FROM TB_ATTEND_DAY_CHECK WHERE CNTR_NO= #{cntrNo} AND EVT_SEQ = #{evtSeq})
+				LEFT OUTER JOIN TB_REWARD_INFO D ON D.ISSUE_SEQ = B.ISSUE_SEQ AND D.CNTR_NO = #{cntrNo} AND B.ISSUE_SEQ = (SELECT (COALESCE(MAX(CHECK_DAY), 0) + 1) AS CNT FROM TB_ATTEND_DAY_CHECK WHERE CNTR_NO= #{cntrNo} AND EVT_SEQ = #{evtSeq})
+        	</when>
+        	<otherwise>
+				LEFT OUTER JOIN TB_ENTRY_INFO C ON C.ISSUE_SEQ = B.ISSUE_SEQ AND C.RECV_USER_ID = #{userId} AND B.ISSUE_SEQ = (SELECT (COALESCE(MAX(CHECK_DAY), 0) + 1) AS CNT FROM TB_ATTEND_DAY_CHECK WHERE USER_ID= #{userId} AND EVT_SEQ = #{evtSeq})
+				LEFT OUTER JOIN TB_REWARD_INFO D ON D.ISSUE_SEQ = B.ISSUE_SEQ AND D.USER_ID = #{userId} AND B.ISSUE_SEQ = (SELECT (COALESCE(MAX(CHECK_DAY), 0) + 1) AS CNT FROM TB_ATTEND_DAY_CHECK WHERE USER_ID= #{userId} AND EVT_SEQ = #{evtSeq})
+        	</otherwise>
+        </choose>
+		WHERE A.EVT_SEQ = #{evtSeq}
+		GROUP BY A.EVT_SEQ
+	</select>
+	
+		<select id="getAttendTicketEventJoinCount" resultType="Integer">
+		/* mybatis.mapper.event.getAttendTicketEventJoinCount : 210811 이벤트 참여 횟수를 조회한다.(응모권 출석체크) */
+		SELECT 
+			COUNT(C.ISSUE_SEQ) + COUNT(D.ISSUE_SEQ) + COUNT(E.ISSUE_SEQ) AS CNT
+		FROM TB_EVENT_MASTER A 
+		INNER JOIN TB_GIFT_ISSUE_INFO B ON A.EVT_SEQ = B.EVT_SEQ
+		<choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+				LEFT OUTER JOIN TB_ENTRY_INFO C ON C.ISSUE_SEQ = B.ISSUE_SEQ AND C.RECV_CNTR_NO = #{cntrNo} AND B.ISSUE_SEQ IN ( SELECT ISSUE_SEQ FROM TB_ATTEND_INFO WHERE EVT_SEQ =#{evtSeq} AND GIFT_DAY = (SELECT (COALESCE(MAX(CHECK_DAY), 0) + 1) AS CNT FROM TB_ATTEND_DAY_CHECK WHERE CNTR_NO= #{cntrNo} AND EVT_SEQ = #{evtSeq}) )
+				LEFT OUTER JOIN TB_REWARD_INFO D ON D.ISSUE_SEQ = B.ISSUE_SEQ AND D.CNTR_NO = #{cntrNo} AND B.ISSUE_SEQ IN ( SELECT ISSUE_SEQ FROM TB_ATTEND_INFO WHERE EVT_SEQ =#{evtSeq} AND GIFT_DAY = (SELECT (COALESCE(MAX(CHECK_DAY), 0) + 1) AS CNT FROM TB_ATTEND_DAY_CHECK WHERE CNTR_NO= #{cntrNo} AND EVT_SEQ = #{evtSeq}) )
+				LEFT OUTER JOIN TB_TICKET_REWARD_INFO E ON E.ISSUE_SEQ = B.ISSUE_SEQ AND E.CNTR_NO = #{cntrNo} AND B.ISSUE_SEQ IN ( SELECT ISSUE_SEQ FROM TB_ATTEND_INFO WHERE EVT_SEQ =#{evtSeq} AND GIFT_DAY = (SELECT (COALESCE(MAX(CHECK_DAY), 0) + 1) AS CNT FROM TB_ATTEND_DAY_CHECK WHERE CNTR_NO= #{cntrNo} AND EVT_SEQ = #{evtSeq}) )
+        	</when>
+        	<otherwise>
+				LEFT OUTER JOIN TB_ENTRY_INFO C ON C.ISSUE_SEQ = B.ISSUE_SEQ AND C.RECV_USER_ID = #{userId} AND B.ISSUE_SEQ IN ( SELECT ISSUE_SEQ FROM TB_ATTEND_INFO WHERE EVT_SEQ =#{evtSeq} AND GIFT_DAY = (SELECT (COALESCE(MAX(CHECK_DAY), 0) + 1) AS CNT FROM TB_ATTEND_DAY_CHECK WHERE USER_ID= #{userId} AND EVT_SEQ = #{evtSeq}) )
+				LEFT OUTER JOIN TB_REWARD_INFO D ON D.ISSUE_SEQ = B.ISSUE_SEQ AND D.USER_ID = #{userId} AND B.ISSUE_SEQ IN ( SELECT ISSUE_SEQ FROM TB_ATTEND_INFO WHERE EVT_SEQ =#{evtSeq} AND GIFT_DAY = (SELECT (COALESCE(MAX(CHECK_DAY), 0) + 1) AS CNT FROM TB_ATTEND_DAY_CHECK WHERE USER_ID= #{userId} AND EVT_SEQ = #{evtSeq}) )
+				LEFT OUTER JOIN TB_TICKET_REWARD_INFO E ON E.ISSUE_SEQ = B.ISSUE_SEQ AND E.USER_ID = #{userId} AND B.ISSUE_SEQ IN ( SELECT ISSUE_SEQ FROM TB_ATTEND_INFO WHERE EVT_SEQ =#{evtSeq} AND GIFT_DAY = (SELECT (COALESCE(MAX(CHECK_DAY), 0) + 1) AS CNT FROM TB_ATTEND_DAY_CHECK WHERE USER_ID= #{userId} AND EVT_SEQ = #{evtSeq}) )
+        	</otherwise>
+        </choose>
+		WHERE A.EVT_SEQ = #{evtSeq}
+		GROUP BY A.EVT_SEQ
+	</select>
+	
+	<select id="getEventRandomJoinCount" resultType="Integer">
+		/* mybatis.mapper.event.getEventRandomJoinCount : 이벤트 참여 횟수를 조회한다.(랜덤제공) */
+		SELECT
+            COUNT(*) AS CNT
+        FROM TB_EVENT_MASTER A
+        <choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+        		INNER JOIN TB_ENTRY_INFO C ON C.EVT_SEQ = A.EVT_SEQ and  C.RECV_CNTR_NO = #{cntrNo}
+        	</when>
+        	<otherwise>
+        	    INNER JOIN TB_ENTRY_INFO C ON C.EVT_SEQ = A.EVT_SEQ and  C.RECV_USER_ID = #{userId}
+        	</otherwise>
+        </choose>
+        WHERE A.EVT_SEQ = #{evtSeq}
+        GROUP BY A.EVT_SEQ
+	</select>
+	
+	<select id="getEventRemainGiftCount" resultType="Integer">
+		/* mybatis.mapper.event.getEventRemainGiftCount : 이벤트 경품 잔여 수량을 조회한다. */
+		SELECT 
+			(A.GIFT_CNT - A.ISSUE_CNT) AS CNT
+		FROM TB_GIFT_ISSUE_INFO A
+		WHERE A.ISSUE_SEQ = #{issueSeq}
+	</select>
+	
+	<select id="getEventRemainGiftTotCount" resultType="Integer">
+		/* mybatis.mapper.event.getEventRemainGiftTotCount : 이벤트 토탈 경품 잔여수량을 조회한다. */
+		SELECT SUM(GIFT_CNT - ISSUE_CNT) AS CNT
+		FROM TB_GIFT_ISSUE_INFO 
+		WHERE ISSUE_SEQ IN (
+			SELECT ISSUE_SEQ FROM TB_ATTEND_INFO 
+			WHERE EVT_SEQ = (SELECT EVT_SEQ FROM TB_ATTEND_INFO WHERE ISSUE_SEQ = #{issueSeq})
+			AND GIFT_DAY = (SELECT GIFT_DAY FROM TB_ATTEND_INFO WHERE ISSUE_SEQ = #{issueSeq})
+		)
+	</select>
+	
+	<select id="getEventRemainGiftTotCountByOrder" resultType="Integer">
+		/* mybatis.mapper.event.getEventRemainGiftTotCountNew : 선착순 / 온라인 경품 이벤트 경품 잔여 총 수량을 조회한다. */
+		SELECT 
+			SUM(A.GIFT_CNT - A.ISSUE_CNT) AS CNT
+		FROM TB_GIFT_ISSUE_INFO A
+		WHERE A.EVT_SEQ = #{evtSeq}
+	</select>
+	
+	<select id="getEventRemainGiftTotCountByIssueSeq" resultType="Integer">
+		/* mybatis.mapper.event.getEventRemainGiftTotCount : 이벤트 토탈 경품 잔여수량을 조회한다. */
+		SELECT GIFT_CNT - ISSUE_CNT AS REMAINCNT
+		FROM TB_GIFT_ISSUE_INFO 
+		WHERE ISSUE_SEQ IN
+			<foreach collection="list" item="item" index="idx" separator="," open="(" close=")">
+					#{item}
+			</foreach>
+	</select>
+	
+	<select id="getRewardCount" resultType="Integer">
+		/* mybatis.mapper.event.getRewardCount : 리워드 참여 수량을 조회한다. */
+		SELECT COUNT(*) AS CNT
+		FROM TB_REWARD_INFO
+		<choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+        		WHERE CNTR_NO 	= #{cntrNo} AND ISSUE_SEQ = #{issueSeq}
+        	</when>
+        	<otherwise>
+        	    WHERE USER_ID 	= #{userId} AND ISSUE_SEQ = #{issueSeq}
+        	</otherwise>
+        </choose>
+	</select>
+	
+	<update id="updateEventRewardInfo" parameterType="EventGiftJoin">
+		/* mybatis.mapper.event.updateEventRewardInfo : 210913 경품 이벤트 선착순 리워드 정보를 업데이트한다. */
+		UPDATE 
+			TB_REWARD_INFO
+		SET
+			MOD_DT = NOW()
+			<if test='cntrNo != null and cntrNo != ""'>
+			, CNTR_NO = #{cntrNo}
+			</if>
+			<if test='userId != null and userId != ""'>
+			, USER_ID = #{userId}
+			</if>
+			, ISSUE_SEQ = #{issueSeq}
+			, ISSUE_YN = 'Y'
+			<if test='recvName != null and recvName != ""'>
+			, recv_name = #{recvName}
+			</if>
+			<if test='recvMobileNo != null and recvMobileNo != ""'>
+			, recv_mobile_no = #{recvMobileNo}
+			</if>
+			<if test='post != null and post != ""'>
+			, post = #{post}
+			</if>
+			<if test='addr != null and addr != ""'>
+			, addr = #{addr}
+			</if>
+			<if test='addrDtl != null and addrDtl != ""'>
+			, addr_dtl = #{addrDtl}
+			</if>
+			<if test='remarks != null and remarks != ""'>
+			, remarks = #{remarks}
+			</if>
+			, ISSUE_DT = NOW()
+		WHERE REW_SEQ = (SELECT	MIN(REW_SEQ) AS REW_SEQ	FROM TB_REWARD_INFO	WHERE GIFT_SEQ = #{giftSeq} AND	ISSUE_YN <![CDATA[ <> ]]> 'Y')
+		AND ISSUE_YN <![CDATA[ <> ]]> 'Y'
+	</update>
+		
+	<update id="updateRewardInfo" parameterType="EventGiftJoin">
+		/* mybatis.mapper.event.updateRewardInfo : 이벤트 리워드 정보를 업데이트한다. */
+		UPDATE 
+			TB_REWARD_INFO
+		SET
+			MOD_DT = NOW()
+			<if test='cntrNo != null and cntrNo != ""'>
+			, CNTR_NO = #{cntrNo}
+			</if>
+			<if test='userId != null and userId != ""'>
+			, USER_ID = #{userId}
+			</if>
+			, ISSUE_SEQ = #{issueSeq}
+			, ISSUE_YN = 'Y'
+			, ISSUE_DT = NOW()
+		WHERE REW_SEQ = #{rewSeq}
+		AND ISSUE_YN <![CDATA[ <> ]]> 'Y'
+	</update>
+	
+	<update id="updateClassRewardInfo" useGeneratedKeys="true" parameterType="YcanvasItem">
+	<selectKey keyProperty="rewSeq" resultType="int" order="BEFORE">
+        	SELECT	MIN(REW_SEQ) AS REW_SEQ	FROM TB_CLASS_REWARD_INFO WHERE GIFT_SEQ = #{giftSeq} AND	ISSUE_YN <![CDATA[ <> ]]> 'Y'
+    </selectKey>
+		/* mybatis.mapper.event.updateClassRewardInfo : 210913 경품 이벤트 선착순 리워드 정보를 업데이트한다. */
+		UPDATE 
+			TB_CLASS_REWARD_INFO
+		SET
+			MOD_DT = NOW()
+			, ISSUE_SEQ = #{issueSeq}
+			, ISSUE_YN = 'Y'
+		WHERE REW_SEQ = (SELECT	MIN(REW_SEQ) AS REW_SEQ	FROM TB_CLASS_REWARD_INFO WHERE GIFT_SEQ = #{giftSeq} AND	ISSUE_YN <![CDATA[ <> ]]> 'Y')
+		AND ISSUE_YN <![CDATA[ <> ]]> 'Y'
+	</update>
+	
+	<update id="updateGiftIssueInfo" parameterType="EventGiftJoin">
+		/* mybatis.mapper.event.updateGiftIssueInfo : 이벤트 상품 발행정보를 업데이트한다. */
+		UPDATE 
+			TB_GIFT_ISSUE_INFO
+		SET
+			ISSUE_CNT = ISSUE_CNT + 1
+		WHERE ISSUE_SEQ = #{issueSeq}
+		AND ISSUE_CNT <![CDATA[ < ]]>  GIFT_CNT
+	</update>
+	
+	<update id="updateMinusGiftIssueInfo" parameterType="EventGiftJoin">
+		/* mybatis.mapper.event.updateGiftIssueInfo : 이벤트 상품 발행정보를 업데이트한다. */
+		UPDATE 
+			TB_GIFT_ISSUE_INFO
+		SET
+			ISSUE_CNT = ISSUE_CNT - 1
+		WHERE ISSUE_SEQ = #{issueSeq}
+	</update>
+	
+	<insert id="insertEntryInfo" parameterType="EventGiftJoin">
+		/* mybatis.mapper.event.insertEntryInfo : 이벤트 참여 정보를 등록한다. */
+		INSERT INTO TB_ENTRY_INFO
+		(
+			EVT_SEQ
+			, GIFT_SEQ
+			, ISSUE_SEQ
+			, JOIN_SEQ
+			, RECV_CNTR_NO
+			, RECV_USER_ID
+			, RECV_NAME
+			, RECV_MOBILE_NO
+			, POST
+			, ADDR
+			, ADDR_DTL
+			, WIN_YN
+			, REMARKS
+			, MOD_DT
+			, REG_DT			
+		)
+		VALUES
+		(
+			#{evtSeq}
+			, #{giftSeq}
+			, #{issueSeq}
+			, #{joinSeq}
+			, #{recvCntrNo}
+			, #{recvUserId}
+			, #{recvName}
+			, #{recvMobileNo}
+			, #{post}
+			, #{addr}
+			, #{addrDtl}
+			, #{winYn}
+			, #{remarks}
+			, now()
+			, now()
+		)
+	</insert>
+	
+	<select id="getMyEventGiftInfo" resultType="EventGift">
+		/* mybatis.mapper.event.getMyEventGiftInfo : 나의 이벤트 경품 정보를 조회한다. */
+		SELECT
+			B.GIFT_NAME
+			, B.GIFT_SEQ	
+			, B.IMG_URL
+			, B.SOLD_IMG_URL
+		FROM TB_REWARD_INFO A
+		INNER JOIN TB_GIFT_MASTER B ON B.GIFT_SEQ = A.GIFT_SEQ
+		INNER JOIN TB_GIFT_ISSUE_INFO C ON C.ISSUE_SEQ = A.ISSUE_SEQ AND C.EVT_SEQ = #{evtSeq}
+		<choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+        		WHERE A.CNTR_NO = #{cntrNo}
+        	</when>
+        	<otherwise>
+        	    WHERE A.USER_ID = #{userId}
+        	</otherwise>
+        </choose>
+	</select>
+	
+	<select id="getMyEventGiftDataCpInfo" resultType="EventGift">
+		/* mybatis.mapper.event.getMyEventGiftDataCpInfo : 나의 이벤트 데이터 경품 정보를 조회한다. */
+		SELECT
+			B.GIFT_NAME
+			, B.GIFT_SEQ	
+			, B.IMG_URL
+			, B.SOLD_IMG_URL
+		FROM TB_DATA_REWARD_INFO A
+		INNER JOIN TB_GIFT_MASTER B ON B.GIFT_SEQ = A.GIFT_SEQ
+		INNER JOIN TB_GIFT_ISSUE_INFO C ON C.ISSUE_SEQ = A.ISSUE_SEQ AND C.EVT_SEQ = #{evtSeq}
+		<choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+        		WHERE A.CNTR_NO = #{cntrNo}
+        	</when>
+        	<otherwise>
+        	    WHERE A.USER_ID = #{userId}
+        	</otherwise>
+        </choose>
+	</select>
+	
+	<select id="getMyEventTicketGiftInfo" resultType="EventGift">
+		/* mybatis.mapper.event.getMyEventTicketGiftInfo : 210813 나의 이벤트 응모권 경품 정보를 조회한다. */
+		SELECT
+			C.GIFT_NAME
+			, C.GIFT_SEQ	
+			, C.IMG_URL
+		FROM TB_TICKET_REWARD_INFO A
+		INNER JOIN TB_GIFT_ISSUE_INFO B ON B.ISSUE_SEQ = A.ISSUE_SEQ AND B.EVT_SEQ = #{evtSeq}
+		INNER JOIN TB_GIFT_MASTER C ON C.GIFT_SEQ = B.GIFT_SEQ
+		<choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+        		WHERE A.CNTR_NO = #{cntrNo}
+        	</when>
+        	<otherwise>
+        	    WHERE A.USER_ID = #{userId}
+        	</otherwise>
+        </choose>
+	</select>
+	
+	<select id="getMyEventAttendGiftInfo" resultType="EventGift">
+		/* mybatis.mapper.event.getMyEventAttendGiftInfo : 나의 이벤트 경품 정보를 조회한다.(출석) */
+		SELECT
+			B.GIFT_NAME
+			, B.GIFT_SEQ	
+			, B.IMG_URL
+		FROM TB_REWARD_INFO A
+		INNER JOIN TB_GIFT_MASTER B ON B.GIFT_SEQ = A.GIFT_SEQ
+		INNER JOIN TB_GIFT_ISSUE_INFO C ON C.ISSUE_SEQ = A.ISSUE_SEQ AND C.EVT_SEQ = #{evtSeq}
+		<choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+        		WHERE A.CNTR_NO = #{cntrNo}
+        	</when>
+        	<otherwise>
+        	    WHERE A.USER_ID = #{userId}
+        	</otherwise>
+        </choose>
+		AND A.ISSUE_SEQ = #{issueSeq}
+	</select>
+	
+	<select id="getMyEventAttendTicketGiftInfo" resultType="EventGift">
+		/* mybatis.mapper.event.getMyEventAttendTicketGiftInfo : 210813 나의 이벤트 응모권 경품 정보를 조회한다.(출석) */
+		SELECT
+			C.GIFT_NAME
+			, C.GIFT_SEQ	
+			, C.IMG_URL
+		FROM TB_TICKET_REWARD_INFO A
+		INNER JOIN TB_GIFT_ISSUE_INFO B ON B.ISSUE_SEQ = A.ISSUE_SEQ AND B.EVT_SEQ = #{evtSeq}
+		INNER JOIN TB_GIFT_MASTER C ON C.GIFT_SEQ = B.GIFT_SEQ
+		<choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+        		WHERE A.CNTR_NO = #{cntrNo}
+        	</when>
+        	<otherwise>
+        	    WHERE A.USER_ID = #{userId}
+        	</otherwise>
+        </choose>
+		AND A.ISSUE_SEQ = #{issueSeq}
+	</select>
+	
+	<select id="getMyEventAttendList" resultType="EventGift">
+		/* mybatis.mapper.event.getMyEventAttendList : 이벤트 출석내역 */
+		WITH WT_DAY AS (
+			SELECT 1 AS DAY
+			UNION ALL 
+			SELECT 2 AS DAY
+			UNION ALL 
+			SELECT 3 AS DAY
+			UNION ALL 
+			SELECT 4 AS DAY
+			UNION ALL 
+			SELECT 5 AS DAY
+			UNION ALL 
+			SELECT 6 AS DAY
+			UNION ALL 
+			SELECT 7 AS DAY
+		)
+		SELECT 
+		A.DAY AS GIFT_DAY
+		, (CASE WHEN COALESCE(B.GIFT_DAY, -1) = -1 THEN 'N' ELSE 'Y' END) AS GIFT_YN
+		, (CASE WHEN COALESCE(C.CHK_SEQ, -1) = -1 THEN 'N' ELSE 'Y' END) AS ATTEND_YN
+		, (CASE WHEN COALESCE(B.GIFT_DAY, -1) <![CDATA[ <> ]]> -1 AND D.ISSUE_CNT = D.GIFT_CNT THEN 'Y' ELSE 'N' END) AS SOLDOUT_YN 
+		, (CASE WHEN COALESCE(B.GIFT_DAY, -1) <![CDATA[ <> ]]> -1 AND E.CNTR_NO IS NOT NULL THEN 'Y' ELSE 'N' END) AS WIN_YN 
+		FROM WT_DAY A
+		<choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+				LEFT JOIN (SELECT GIFT_DAY, ISSUE_SEQ FROM TB_ATTEND_INFO WHERE EVT_SEQ = #{evtSeq} GROUP BY GIFT_DAY, ISSUE_SEQ ORDER BY GIFT_DAY) B ON A.DAY = B.GIFT_DAY
+				LEFT OUTER JOIN TB_ATTEND_DAY_CHECK C ON A.DAY = C.CHECK_DAY AND C.EVT_SEQ = #{evtSeq} AND C.CNTR_NO = #{cntrNo}
+				LEFT OUTER JOIN TB_GIFT_ISSUE_INFO D ON B.ISSUE_SEQ = D.ISSUE_SEQ
+				LEFT OUTER JOIN TB_REWARD_INFO E ON B.ISSUE_SEQ = E.ISSUE_SEQ AND E.CNTR_NO = #{cntrNo} AND E.ISSUE_YN = 'Y'
+        	</when>
+        	<otherwise>
+				LEFT JOIN (SELECT GIFT_DAY, ISSUE_SEQ FROM TB_ATTEND_INFO WHERE EVT_SEQ = #{evtSeq} GROUP BY GIFT_DAY, ISSUE_SEQ ORDER BY GIFT_DAY) B ON A.DAY = B.GIFT_DAY
+				LEFT OUTER JOIN TB_ATTEND_DAY_CHECK C ON A.DAY = C.CHECK_DAY AND C.EVT_SEQ = #{evtSeq} AND C.USER_ID = #{userId}
+				LEFT OUTER JOIN TB_GIFT_ISSUE_INFO D ON B.ISSUE_SEQ = D.ISSUE_SEQ
+				LEFT OUTER JOIN TB_REWARD_INFO E ON B.ISSUE_SEQ = E.ISSUE_SEQ AND E.USER_ID = #{userId} AND E.ISSUE_YN = 'Y'
+        	</otherwise>
+        </choose>
+		ORDER BY A.DAY
+	</select>
+	
+	<select id="getMyTicketEventAttendList" resultType="EventGift">
+		/* mybatis.mapper.event.getMyTicketEventAttendList : 210819 응모권 출석 이벤트 출석내역 */
+		WITH WT_DAY AS (
+		<foreach collection="dayList" item="item" separator="UNION ALL">
+			SELECT #{item} AS DAY
+		</foreach>																																							
+		)
+		SELECT 
+		A.DAY AS GIFT_DAY
+		, (CASE WHEN COALESCE(B.GIFT_DAY, -1) = -1 THEN 'N' ELSE 'Y' END) AS GIFT_YN
+		, (CASE WHEN COALESCE(C.CHK_SEQ, -1) = -1 THEN 'N' ELSE 'Y' END) AS ATTEND_YN
+		, (CASE WHEN COALESCE(B.GIFT_DAY, -1) <![CDATA[ <> ]]> -1 AND D.ISSUE_CNT = D.GIFT_CNT THEN 'Y' ELSE 'N' END) AS SOLDOUT_YN 
+		, (CASE WHEN COALESCE(B.GIFT_DAY, -1) <![CDATA[ <> ]]> -1 AND E.CNTR_NO IS NOT NULL THEN 'Y' ELSE 'N' END) AS WIN_YN 
+		FROM WT_DAY A
+		<choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+				LEFT JOIN (SELECT GIFT_DAY, ISSUE_SEQ FROM TB_ATTEND_INFO WHERE EVT_SEQ = #{evtSeq} GROUP BY GIFT_DAY, ISSUE_SEQ ORDER BY GIFT_DAY) B ON A.DAY = B.GIFT_DAY
+				LEFT OUTER JOIN TB_ATTEND_DAY_CHECK C ON A.DAY = C.CHECK_DAY AND C.EVT_SEQ = #{evtSeq} AND C.CNTR_NO = #{cntrNo}
+				LEFT OUTER JOIN TB_GIFT_ISSUE_INFO D ON B.ISSUE_SEQ = D.ISSUE_SEQ
+				LEFT OUTER JOIN (SELECT ISSUE_SEQ, CNTR_NO, ISSUE_YN FROM TB_REWARD_INFO WHERE CNTR_NO = #{cntrNo} AND ISSUE_YN = 'Y' UNION ALL SELECT ISSUE_SEQ, CNTR_NO, 'Y' AS ISSUE_YN FROM TB_TICKET_REWARD_INFO WHERE CNTR_NO = #{cntrNo} ) E ON B.ISSUE_SEQ = E.ISSUE_SEQ
+        	</when>
+        	<otherwise>
+				LEFT JOIN (SELECT GIFT_DAY, ISSUE_SEQ FROM TB_ATTEND_INFO WHERE EVT_SEQ = #{evtSeq} GROUP BY GIFT_DAY, ISSUE_SEQ ORDER BY GIFT_DAY) B ON A.DAY = B.GIFT_DAY
+				LEFT OUTER JOIN TB_ATTEND_DAY_CHECK C ON A.DAY = C.CHECK_DAY AND C.EVT_SEQ = #{evtSeq} AND C.USER_ID = #{userId}
+				LEFT OUTER JOIN TB_GIFT_ISSUE_INFO D ON B.ISSUE_SEQ = D.ISSUE_SEQ
+				LEFT OUTER JOIN (SELECT ISSUE_SEQ, USER_ID, ISSUE_YN FROM TB_REWARD_INFO WHERE USER_ID = #{userId} AND ISSUE_YN = 'Y' UNION ALL SELECT ISSUE_SEQ, USER_ID, 'Y' AS ISSUE_YN FROM TB_TICKET_REWARD_INFO WHERE USER_ID = #{userId} ) E ON B.ISSUE_SEQ = E.ISSUE_SEQ
+        	</otherwise>
+        </choose>
+		ORDER BY A.DAY
+	</select>
+	
+	<select id="getEventAttendNowChk" resultType="int">
+		/* mybatis.mapper.event.getEventAttendNowChk : 당일 이벤트 출석정보 체크 */
+		SELECT 
+			COUNT(A.*) AS CNT
+		  FROM TB_EVENT_MASTER A
+		  
+		<choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+		 		INNER JOIN TB_ATTEND_DAY_CHECK B ON A.EVT_SEQ = B.EVT_SEQ AND B.CNTR_NO = #{cntrNo} AND TO_CHAR(now(), 'YYYYMMDD') = TO_CHAR(B.REG_DT, 'YYYYMMDD')
+        	</when>
+        	<otherwise>
+		 		INNER JOIN TB_ATTEND_DAY_CHECK B ON A.EVT_SEQ = B.EVT_SEQ AND B.USER_ID = #{userId} AND TO_CHAR(now(), 'YYYYMMDD') = TO_CHAR(B.REG_DT, 'YYYYMMDD')
+        	</otherwise>
+        </choose>
+		 WHERE (A.EVT_TYPE = 'G0005' OR A.EVT_TYPE = 'G0010'  )
+		 AND A.EVT_SEQ		= #{evtSeq}
+	</select>
+	
+	<insert id="insertAttendDayCheck" parameterType="AttendDayCheck">
+		/* mybatis.mapper.event.insertAttendDayCheck : 출석체크 정보를 등록한다. */
+		INSERT INTO TB_ATTEND_DAY_CHECK
+		(
+			EVT_SEQ
+			, ATT_SEQ
+			<if test='cntrNo != null and cntrNo != ""'>
+			, CNTR_NO
+			</if>
+			<if test='userId != null and userId != ""'>
+			, USER_ID
+			</if>
+			, CHECK_DAY
+			, MOD_DT
+			, REG_DT
+		)
+		VALUES
+		(
+			#{evtSeq}
+			, 0
+			<if test='cntrNo != null and cntrNo != ""'>
+			, #{cntrNo}
+			</if>
+			<if test='userId != null and userId != ""'>
+			, #{userId}
+			</if>
+			<choose>
+        		<when test ='cntrNo != null and cntrNo != ""'>
+        			, (SELECT (COALESCE(MAX(CHECK_DAY), 0) + 1) AS CNT FROM TB_ATTEND_DAY_CHECK WHERE CNTR_NO= #{cntrNo} AND EVT_SEQ = #{evtSeq})
+        		</when>
+        		<otherwise>
+        	    	, (SELECT (COALESCE(MAX(CHECK_DAY), 0) + 1) AS CNT FROM TB_ATTEND_DAY_CHECK WHERE USER_ID= #{userId} AND EVT_SEQ = #{evtSeq})
+        		</otherwise>
+        	</choose>
+			, now()
+			, now()
+		)
+	</insert>
+	
+	<select id="getEventDetailAttendGiftList" resultType="EventGift">
+		/* mybatis.mapper.event.getEventDetailAttendGiftList : 이벤트 상세화면(출석체크) 상품 목록을 조회한다. */
+		SELECT 
+			C.GIFT_NAME
+			, C.GIFT_SEQ
+			, (CASE WHEN A.GIFT_CNT = A.ISSUE_CNT THEN C.SOLD_IMG_URL ELSE C.IMG_URL END) AS IMG_URL
+			, A.GIFT_CNT
+			, A.ISSUE_SEQ
+			, A.ISSUE_CNT
+			, A.EVT_SEQ
+			, C.GIFT_TYPE
+			, (CASE WHEN A.GIFT_CNT = A.ISSUE_CNT THEN 'Y' ELSE 'N' END) AS SOLDOUT_YN
+		FROM TB_GIFT_ISSUE_INFO A
+		INNER JOIN TB_EVENT_MASTER B ON A.EVT_SEQ = B.EVT_SEQ
+		INNER JOIN TB_GIFT_MASTER C ON A.GIFT_SEQ = C.GIFT_SEQ
+		INNER JOIN TB_ATTEND_INFO D ON A.EVT_SEQ = D.EVT_SEQ AND A.ISSUE_SEQ = D.ISSUE_SEQ AND GIFT_DAY = #{giftDay}
+		WHERE A.EVT_SEQ = #{evtSeq}
+		ORDER BY A.ISSUE_SEQ
+	</select>
+	
+	<select id="getEventBanner" resultType="EventMaster">
+		/* mybatis.mapper.event.getEventBanner : 이벤트 배너 이미지를 랜덤으로 조회한다. */
+		SELECT *		
+		  FROM (SELECT 
+					   A.EVT_SEQ
+					  ,A.EVT_TITLE
+					  ,A.EVT_TYPE
+					  ,(SELECT CODE_NM FROM TM_GROUP_CODE WHERE GRP_CODE_ID = 'RN_EVENT_TYPE' AND CODE_ID = A.EVT_TYPE) AS EVT_TYPE_NM
+					  ,A.EVT_START_DT
+					  ,A.EVT_END_DT
+					  ,A.LNB_BOTTOM_IMG_YN
+					  ,A.LNB_BOTTOM_IMG
+				FROM  TB_EVENT_MASTER A
+				WHERE A.USE_YN='Y'
+				AND   A.LNB_BOTTOM_IMG_YN='Y'
+				AND   A.LNB_BOTTOM_IMG != '') AS LNB
+		  ORDER BY RANDOM() LIMIT 1
+	</select>
+	
+	<select id="getAttendRewardSeq" resultType="Integer">
+		/* mybatis.mapper.event.getAttendRewardSeq : 선착순 리워드 지급받을 키값을 조회한다. */
+		WITH T1 AS ( 
+			SELECT (
+				ROW_NUMBER() OVER(ORDER BY CHK_SEQ)) AS RNUM, 
+				<choose>
+		        	<when test ='cntrNo != null and cntrNo != ""'>
+		        		CNTR_NO,
+		        	</when>
+		        	<otherwise>
+		        	    USER_ID,
+		        	</otherwise>
+		        </choose>
+				REG_DT 
+			FROM TB_ATTEND_DAY_CHECK
+			WHERE EVT_SEQ = #{evtSeq}
+			AND CHECK_DAY = (SELECT GIFT_DAY FROM TB_ATTEND_INFO WHERE ISSUE_SEQ = #{issueSeq}) LIMIT (SELECT GIFT_CNT FROM TB_GIFT_ISSUE_INFO WHERE ISSUE_SEQ = #{issueSeq}) 
+		), T2 AS ( 
+			SELECT 
+				ROW_NUMBER() OVER(ORDER BY REW_SEQ) AS RNUM, 
+				REW_SEQ 
+			FROM TB_REWARD_INFO 
+			WHERE GIFT_SEQ = #{giftSeq} 
+		) 
+		SELECT T2.REW_SEQ FROM T1 
+		INNER JOIN T2 ON T1.RNUM = T2.RNUM
+		<choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+        		WHERE T1.CNTR_NO = #{cntrNo}
+        	</when>
+        	<otherwise>
+        	    WHERE T1.USER_ID = #{userId}
+        	</otherwise>
+        </choose>
+	</select>
+	
+	<update id="updateAllRewardInfo" parameterType="EventGiftJoin">
+		/* mybatis.mapper.event.updateAllRewardInfo : 이벤트 리워드 정보를 업데이트한다. */
+		UPDATE TB_REWARD_INFO AS U1 SET 
+		ISSUE_SEQ = #{issueSeq}
+		,CNTR_NO = U2.CNTR_NO
+		, ISSUE_DT = U2.REG_DT
+		, ISSUE_YN = 'Y'
+		from(
+		WITH T1 AS ( 
+			SELECT (ROW_NUMBER() OVER(ORDER BY CHK_SEQ)) AS RNUM, CNTR_NO, REG_DT FROM TB_ATTEND_DAY_CHECK WHERE EVT_SEQ = #{evtSeq} AND CHECK_DAY = (SELECT GIFT_DAY FROM TB_ATTEND_INFO WHERE ISSUE_SEQ = #{issueSeq}) LIMIT (SELECT GIFT_CNT FROM TB_GIFT_ISSUE_INFO WHERE ISSUE_SEQ = #{issueSeq}) 
+		), T2 AS ( 
+			SELECT ROW_NUMBER() OVER(ORDER BY REW_SEQ) AS RNUM, REW_SEQ FROM TB_REWARD_INFO WHERE GIFT_SEQ = #{giftSeq} 
+		) 
+		SELECT T1.CNTR_NO, T2.REW_SEQ, T1.REG_DT FROM T1 
+		INNER JOIN T2 ON T1.RNUM = T2.RNUM
+		) AS U2
+		WHERE U1.REW_SEQ = U2.REW_SEQ
+	</update>
+	
+	<select id="getLastedtVoteHistory" resultType="VoteHistory">
+		/* mybatis.mapper.event.getLastedtVoteHistory : 220926 마지막 투표 이력을 조회한다. */
+		SELECT  *
+		FROM	TB_VOTE_HISTORY
+		WHERE	EVT_SEQ = #{evtSeq}
+		<choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+        		AND		CNTR_NO = #{cntrNo}
+        	</when>
+        	<otherwise>
+        	    AND		USER_ID = #{userId}
+        	</otherwise>
+        </choose>
+        ORDER BY REG_DT DESC
+        FETCH FIRST 1 ROW ONLY
+	</select>
+	
+	<insert id="insertVoteHistory" parameterType="VoteHistory">
+		/* mybatis.mapper.event.insertVoteHistory : 사용자의 투표 정보를 저장한다. */
+		INSERT INTO	TB_VOTE_HISTORY(
+				EVT_SEQ
+			,	VOTE_ITEM_SEQ
+			<if test='cntrNo != null and cntrNo != ""'>
+			, 	CNTR_NO
+			</if>
+			<if test='userId != null and userId != ""'>
+			, 	USER_ID
+			</if>
+			,	REG_DT
+		)VALUES(
+				#{evtSeq}
+			,	#{voteItemSeq}
+			<if test='cntrNo != null and cntrNo != ""'>
+			, 	#{cntrNo}
+			</if>
+			<if test='userId != null and userId != ""'>
+			, 	#{userId}
+			</if>
+			,	now()
+		)
+	</insert>
+	
+	<select id="getVoteHistory" resultType="VoteHistory">
+		/* mybatis.mapper.event.getVoteHistory : 210615 사용자가 선택한 투표대상을 조회한다. */
+		SELECT 		EVT_SEQ
+				,	VOTE_ITEM_SEQ
+				<choose>
+		        	<when test ='cntrNo != null and cntrNo != ""'>
+		        		,CNTR_NO
+		        	</when>
+		        	<otherwise>
+		        	    ,USER_ID
+		        	</otherwise>
+		        </choose>
+				,	REG_DT
+				,	MOD_DT
+		FROM	TB_VOTE_HISTORY
+		WHERE	EVT_SEQ = #{evtSeq}
+		<choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+        		AND		CNTR_NO = #{cntrNo}
+        	</when>
+        	<otherwise>
+        	    AND		USER_ID = #{userId}
+        	</otherwise>
+        </choose>
+	</select>
+	
+	<select id="getTicketEventDetail" resultType="EventMaster">
+		/* mybatis.mapper.event.getTicketEventDetail : 응모권 이벤트 회차를 조회한다. */
+		SELECT		EVT_TYPE
+				,	EVT_TITLE
+				,	EVT_SMALL_TITLE
+				,	EVT_START_DT
+				,	EVT_END_DT
+				,	USE_YN
+		FROM PLANY.TB_EVENT_MASTER
+		WHERE EVT_TYPE = 'G0009'
+		AND	USE_YN = 'Y'
+		AND TO_CHAR(now(), 'YYYYMMDDHH24MI') BETWEEN EVT_START_DT AND EVT_END_DT
+		ORDER BY EVT_SEQ DESC
+		LIMIT 1
+	</select>	
+	
+	<insert id="insertReplyData" parameterType="EventReply">
+		/* mybatis.mapper.event.insertReplyData : 이벤트 댓글 내용를 등록한다. */
+		INSERT INTO TB_EVENT_REPLY
+		(
+			EVT_SEQ
+			, NAME
+			, CNTR_NO
+			, USER_ID
+			, CONTENTS
+			, REG_DT	
+			, MOD_DT
+			, BLOCK_YN
+			, DEL_YN	
+		)
+		VALUES
+		(
+			#{evtSeq}
+			, #{name}
+			, #{cntrNo}
+			, #{userId}
+			, #{contents}
+			, now()
+			, now()
+			, 'N'
+			, 'N'
+		)
+	</insert>
+	
+	<select id="getEventReplyMine" resultType="EventReply">
+		/* mybatis.mapper.event.getEventReplyMine : 해당 댓글이 사용자의 것인지 확인한다. */
+		SELECT		
+			CASE 
+				WHEN CNTR_NO != NULL THEN 'C' ELSE 'I' END AS ORIGIN_KEY,
+			CASE 
+				WHEN CNTR_NO != NULL THEN CNTR_NO ELSE USER_ID END AS ORIGIN_VALUE
+		FROM PLANY.TB_EVENT_REPLY
+		WHERE DEL_YN = 'N'
+		AND ADMIN_YN = 'N'
+		AND REPLY_SEQ = #{replySeq}
+	</select>
+	
+	<update id="updateReplyData" parameterType="EventReply">
+		/* mybatis.mapper.event.updateReplyData : 221117 이벤트 댓글 내용를 수정한다. */
+		UPDATE 
+			PLANY.TB_EVENT_REPLY
+		SET
+			MOD_DT = NOW()
+			<if test='contents != null and contents != ""'>
+			,CONTENTS = #{contents}
+			</if>
+			<if test='delYn != null and delYn != ""'>
+			,DEL_YN = #{delYn}
+			</if>
+		WHERE REPLY_SEQ = #{replySeq}
+	</update>
+	
+	<select id="getReplyList" resultType="EventReply">
+		/* mybatis.mapper.event.getReplyList : 댓글 목록을 조회한다. */
+		SELECT		
+				A.REPLY_SEQ
+				,	A.EVT_SEQ
+				,   A.CNTR_NO
+				,   A.USER_ID
+				,	A.NAME
+				,	A.CONTENTS
+				,	A.REG_DT
+				,	A.MOD_DT
+				,  (CASE WHEN A.CNTR_NO != NULL 
+							THEN
+								CASE WHEN A.CNTR_NO = #{cntrNo} THEN 'Y' ELSE 'N' END
+							ELSE 
+								CASE WHEN A.USER_ID = #{userId} THEN 'Y' ELSE 'N' END
+							END
+					) AS ME_YN
+				,   A.BLOCK_YN
+				,   A.DEL_YN
+		FROM PLANY.TB_EVENT_REPLY A
+		WHERE A.EVT_SEQ = #{evtSeq}
+		AND A.DEL_YN = 'N'
+		AND A.ADMIN_YN = 'N'
+		<if test='endSeq != null and endSeq != "" and endSeq !=0'>
+		AND A.REPLY_SEQ <![CDATA[ < ]]> #{endSeq}
+		</if>
+		ORDER BY A.REPLY_SEQ DESC
+		OFFSET 0
+		LIMIT #{limit}
+	</select>
+	
+	<select id="getReplyCount" resultType="Integer">
+		/* mybatis.mapper.event.getReplyCount : 댓글 갯수를 조회한다. */
+		SELECT		COUNT(REPLY_SEQ)
+		FROM PLANY.TB_EVENT_REPLY
+		WHERE EVT_SEQ = #{evtSeq}
+		AND DEL_YN = 'N'
+	</select>
+	
+	<select id="getLikeCount" resultType="Integer">
+		/* mybatis.mapper.event.getLikeCount : 좋아요 갯수를 조회한다. */
+		SELECT		COUNT(LIKE_SEQ)
+		FROM PLANY.TB_EVENT_LIKE
+		WHERE EVT_SEQ = #{evtSeq}
+		AND LIKE_YN = 'Y'
+	</select>
+	
+	<select id="getUserLikeInfo" resultType="EventLike">
+		/* mybatis.mapper.event.getUserLikeInfo : 사용자 좋아요 정보를 조회한다. */
+		SELECT		LIKE_SEQ
+				,	LIKE_YN
+		FROM PLANY.TB_EVENT_LIKE
+		WHERE	EVT_SEQ = #{evtSeq}
+		<choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+        		AND		CNTR_NO = #{cntrNo}
+        	</when>
+        	<otherwise>
+        	    AND		USER_ID = #{userId}
+        	</otherwise>
+        </choose>
+	</select>
+	
+	<insert id="insertLikeData" parameterType="EventLike">
+		/* mybatis.mapper.event.insertLikeData : 이벤트 좋아요 정보를 등록한다. */
+		INSERT INTO TB_EVENT_LIKE
+		(
+			EVT_SEQ
+			<if test='cntrNo != null and cntrNo != ""'>
+			, 	CNTR_NO
+			</if>
+			<if test='userId != null and userId != ""'>
+			, 	USER_ID
+			</if>
+			, LIKE_YN
+			, REG_DT	
+			, MOD_DT
+		)
+		VALUES
+		(
+			#{evtSeq}
+			<if test='cntrNo != null and cntrNo != ""'>
+			, 	#{cntrNo}
+			</if>
+			<if test='userId != null and userId != ""'>
+			, 	#{userId}
+			</if>
+			, 'Y'
+			, now()
+			, now()
+		)
+	</insert>
+	
+	<update id="updateLikeData" parameterType="EventLike">
+		/* mybatis.mapper.event.updateLikeData : 221120 이벤트 좋아요를 업데이트 한다. */
+		UPDATE 
+			PLANY.TB_EVENT_LIKE
+		SET
+			LIKE_YN = #{likeYn}
+			,MOD_DT = NOW()
+		WHERE LIKE_SEQ = #{likeSeq}
+	</update>
+	
+	<select id="selectEventDataCp" resultType="Integer">
+		/* mybatis.mapper.event.selectEventDataCp : 230309 데이터 상품 리워드에 이슈번호, 상품번호 기준으로 아직 업데이트 안된 data_rew_seq를 가져온다*/
+		SELECT MIN(DATA_REW_SEQ)
+		FROM TB_DATA_REWARD_INFO
+		WHERE 
+		GIFT_SEQ = #{giftSeq}
+		AND ISSUE_SEQ = #{issueSeq}
+		AND CNTR_NO IS NULL
+		LIMIT 1 OFFSET 0
+	</select>
+	
+	<update id="updateEventDataCp" parameterType="Map">
+		/* mybatis.mapper.event.updateEventDataCp : 230309 데이터 상품 리워드에 cntr_no를 업데이트 한다. */
+		UPDATE 
+			tb_data_reward_info
+		SET
+			CNTR_NO = #{cntrNo},
+			ISSUE_DT = NOW(),
+			ISSUE_YN = 'Y'
+		WHERE 
+		DATA_REW_SEQ = #{dataRewSeq}
+	</update>
+	
+	<select id="getEventAdminReplyList" resultType="EventReply">
+		/* mybatis.mapper.event.getEventAdminReplyList : 운영자 댓글 목록을 조회한다. */
+		SELECT		REPLY_SEQ
+				,	EVT_SEQ
+				,   CNTR_NO
+				,   USER_ID
+				,	NAME
+				,	CONTENTS
+				,	REG_DT
+				,	MOD_DT
+				,   BLOCK_YN
+				,   DEL_YN
+		FROM PLANY.TB_EVENT_REPLY
+		WHERE EVT_SEQ = #{evtSeq}
+		AND DEL_YN = 'N'
+		AND ADMIN_YN = 'Y'
+		ORDER BY REPLY_SEQ DESC
+	</select>
+</mapper>

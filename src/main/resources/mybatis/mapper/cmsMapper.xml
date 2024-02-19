@@ -1,0 +1,1323 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+ * cmsMapper.java
+ * 
+ * @author seungman.yu
+ * @since 2018. 8. 10.
+ * @version 1.0
+ * 
+ * Modification Information
+ * Mod Date		Modifier		Description
+ * ========================================
+ * 2018. 8. 24.	seungman.yu 	Y Event 기능 추가
+ * Copyright (c) 2018 KTDS, Inc. All Rights Reserved
+ -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mybatis.mapper.cms">
+	<sql id="pagePrefix">
+		SELECT * FROM (
+	</sql>
+	<sql id="pageSuffix">
+		) TX LIMIT 10 OFFSET #{stIdx}-1
+	</sql>
+	
+	<select id="getAppInfo" resultType="AppInfo">
+		/* mybatis.mapper.cms.getAppInfo : 앱 정보를 조회한다. */
+		WITH MAX_VRSN AS (
+			SELECT
+				  MAX(APP_VRSN)		AS APP_VRSN
+			FROM
+				TB_APP_INFO
+			WHERE
+				OS_TP	= #{osTp}
+			AND USE_YN = 'Y'
+		)
+		SELECT 
+			  A.APP_VRSN
+			, A.OS_TP
+			, A.FORCE_UPT_YN
+			, A.IN_REVIEW_YN
+			, A.REG_DT
+			, A.MOD_DT
+		FROM 
+			TB_APP_INFO A JOIN MAX_VRSN B
+				ON		A.APP_VRSN	= B.APP_VRSN
+		WHERE
+				A.OS_TP 		= #{osTp}
+				AND A.USE_YN = 'Y'
+	</select>
+	
+	<select id="getAppInfoForceCnt" resultType="Integer">
+		/* mybatis.mapper.cms.getAppInfoForceCnt : 앱 정보를 조회에 강제업데이트 여부 건수를 조회한다. */
+		SELECT 
+			 COUNT(*)
+		FROM 
+			TB_APP_INFO
+		WHERE
+				OS_TP 		= #{osTp}
+				AND USE_YN = 'Y'
+				AND APP_VRSN >= #{appVrsn}
+				AND FORCE_UPT_YN = 'Y'
+	</select>
+	
+	<select id="getSysChkInfo" resultType="SysCheck">
+		/* mybatis.mapper.cms.getSysChkInfo : 시스템 점검 정보를 조회한다. */
+		SELECT
+			CHK_SEQ
+			, CHK_CONTENTS
+			, CHK_ST_DT
+			, CHK_ED_DT
+			, REG_DT
+			, MOD_DT
+		FROM
+			TB_SYS_CHECK
+		WHERE
+				USE_YN 		= 'Y'
+		<if test='isSrchAll != "Y"'>
+			AND TO_CHAR(now(), 'YYYYMMDDHH24MI') BETWEEN CHK_ST_DT AND CHK_ED_DT
+		</if>
+		ORDER BY REG_DT DESC
+		LIMIT 1
+	</select>
+	
+	<select id="getNotiMsgList" parameterType="NoticeMsg" resultType="NoticeMsg">
+		/* mybatis.mapper.cms.getNotiMsgList : 알림 목록을 조회한다. */
+		SELECT A.* FROM (
+		SELECT 
+			  NOTI_MSG_SEQ
+			, 'YAPP' AS NOTI_TABLE_TP
+			, CNTR_NO
+			, NOTI_MSG
+			, NOTI_TP
+			, (SELECT CODE_NM FROM TM_GROUP_CODE WHERE GRP_CODE_ID = 'NOTI_MSG_TYPE' AND CODE_ID = NOTI_TP)	AS NOTI_TP_NM
+			, NOTI_TP_DTL
+			, LINK_URL
+			, REQ_RCV_YN
+			, DEL_YN
+			, NEW_YN
+			, REG_DT
+			, MOD_DT
+		FROM 
+			TB_NOTICE_MSG
+		WHERE
+				DEL_YN 		= 'N'
+			AND CNTR_NO		= #{cntrNo}
+			AND REG_DT > now() - interval '3 months'
+		<if test='newYn != null and newYn != ""'>
+			AND NEW_YN		= #{newYn}
+		</if>
+		UNION ALL
+		SELECT 
+			  PUSH_SEQ
+			, 'CMS' AS NOTI_TABLE_TP
+			, CNTR_NO
+			, PUSH_MSG
+			, NOTI_TP
+			, (SELECT CODE_NM FROM TM_GROUP_CODE WHERE GRP_CODE_ID = 'NOTI_MSG_TYPE' AND CODE_ID = NOTI_TP)	AS NOTI_TP_NM
+			, NOTI_TP_DTL
+			, '' LINK_URL
+			, 'N' REQ_RCV_YN
+			, DEL_YN
+			, NEW_YN
+			, REG_DT
+			, MOD_DT
+		FROM 
+			TB_PUSH_MSG
+		WHERE
+				DEL_YN 		= 'N'
+			AND CNTR_NO		= #{cntrNo}
+			AND REG_DT > now() - interval '3 months'
+		<if test='newYn != null and newYn != ""'>
+			AND NEW_YN		= #{newYn}
+		</if>
+		) A	
+		-- 자바단에서 합치면서 정렬을 해주어야하므로 여기서는 하지 않는다.
+		-- ORDER BY A.REG_DT DESC
+	</select>
+	
+	<select id="getPushList" parameterType="NoticeMsg" resultType="NoticeMsg">
+		SELECT  
+			A.push_seq as NOTI_MSG_SEQ,
+			'' AS NOTI_TABLE_TP,
+			A.cntr_no,
+			B.contents as NOTI_MSG,
+			'G0001' as NOTI_TP,
+			'' AS NOTI_TP_NM,
+			(SELECT CODE_NM FROM TM_GROUP_CODE WHERE GRP_CODE_ID = 'NOTI_MSG_TYPE' AND CODE_ID = 'G0001') as NOTI_TP_NM,
+			'' as LINK_URL,
+			'G0100' as NOTI_TP_DTL,
+			'N' REQ_RCV_YN,
+			A.use_yn as DEL_YN,
+			A.NEW_YN,
+			A.reg_dt,
+			A.mod_dt
+		FROM 
+			tb_thread_push_send A, 
+			tb_thread_push_opt_list B  
+		<where>
+			A.use_yn = 'Y'
+			AND A.send_status = 'P'
+			<choose>
+				<when test="cntrNo != null and cntrNo != ''">
+					AND
+						A.cntr_no = #{cntrNo}	
+				</when>
+				<when test="userId != null and userId != ''">
+					AND
+						A.user_id = #{userId}
+				</when>
+			</choose>
+			AND
+				A.push_seq = B.push_seq
+			<![CDATA[
+			AND
+				A.REG_DT > now() - interval '3 months'
+			]]>
+			<if test='newYn != null and newYn != ""'>
+				AND A.NEW_YN = #{newYn}
+			</if>
+		</where>				
+	</select>
+
+	<select id="getNotiMsgNewCount" resultType="int">
+		/* mybatis.mapper.cms.getNotiMsgNewCount : 신규 알림 카운트를 조회한다. */
+		SELECT 
+			SUM(A.NOTICNT) AS NOTICNT 
+		FROM (
+			SELECT 
+				COUNT(NOTI_MSG_SEQ) AS NOTICNT
+			FROM 
+				TB_NOTICE_MSG
+			WHERE
+					DEL_YN 		= 'N'
+			AND CNTR_NO		= #{cntrNo}
+			AND NEW_YN		= 'Y'
+			AND REG_DT > now() - interval '3 months'
+			UNION ALL
+			SELECT 
+				COUNT(PUSH_SEQ) AS NOTICNT
+			FROM TB_PUSH_MSG
+			WHERE 
+				DEL_YN 		= 'N'
+			AND CNTR_NO		= #{cntrNo}
+			AND NEW_YN		= 'Y'
+			AND REG_DT > now() - interval '3 months'
+		) A	
+	</select>
+	
+	<select id="getPushMsgCount"  parameterType="NoticeMsg" resultType="int">
+		/* mybatis.mapper.cms.getPushMsgCount : 신규 알림 카운트를 조회한다. */
+		SELECT 
+			COUNT(*) AS NOTICNT
+		FROM 
+			tb_thread_push_send 
+		WHERE			 
+			use_yn = 'Y'
+			AND send_status = 'P'
+			<choose>
+				<when test="cntrNo != null and cntrNo != ''">
+					AND
+						cntr_no = #{cntrNo}	
+				</when>
+				<when test="userId != null and userId != ''">
+					AND
+						user_id = #{userId}
+				</when>
+			</choose>
+			AND 
+				NEW_YN = 'Y'
+			<![CDATA[
+			AND
+				REG_DT > now() - interval '3 months'
+			]]>	
+	</select>
+		
+	<select id="getMasterNotiMsgList" resultType="NoticeMsg">
+		/* mybatis.mapper.cms.getMasterNotiMsgList : 알림 마스터 정보를 조회한다. */
+		SELECT 
+			  SEQ
+			, NOTI_MSG
+			, NOTI_TP
+			, NOTI_TP_DTL
+			, REMARKS
+			, PUSH_YN
+			, REG_DT
+			, MOD_DT
+		FROM 
+			TM_NOTICE_MSG
+		WHERE
+				SEQ			= #{seq}
+	</select>
+	
+	<insert id="insertNotiMsg" parameterType="NoticeMsg">
+		/* mybatis.mapper.cms.insertNotiMsg : 알림 정보를 저장한다. */
+		INSERT INTO	TB_NOTICE_MSG
+		(
+			  CNTR_NO
+			, NOTI_MSG
+			, NOTI_TP
+			, NOTI_TP_DTL
+			, LINK_URL
+			, DEL_YN
+			, NEW_YN
+			, REQ_RCV_YN
+			, PUSH_RESULT_CD
+			, NOTI_SEQ
+			, REG_DT
+			, MOD_DT
+		) VALUES
+		(
+			  #{cntrNo}
+			, #{notiMsg}
+			, #{notiTp}
+			, #{notiTpDtl}
+			, #{linkUrl}
+			, 'N'
+			, 'Y'
+			, #{reqRcvYn}
+			, #{pushResultCd}
+			, #{notiSeq}
+			, now()
+			, now()
+		)
+	</insert>
+	
+	<update id="updateNotiMsg" parameterType="NoticeMsg">
+		/* mybatis.mapper.cms.updateNotiMsg : 알림 정보의 신규여부, 삭제여부를 갱신한다. */
+		UPDATE TB_NOTICE_MSG SET
+			  MOD_DT = now()
+		<if test='newYn != null and newYn != ""'>
+			, NEW_YN = #{newYn}
+		</if>
+		<if test='delYn != null and delYn != ""'>
+			, DEL_YN = #{delYn}
+		</if>
+		WHERE
+			CNTR_NO = #{cntrNo}
+	</update>
+
+	<update id="updatePushMsg" parameterType="NoticeMsg">
+		/* mybatis.mapper.cms.updatePushMsg : 알림 정보의 신규여부, 삭제여부를 갱신한다. */
+		UPDATE TB_PUSH_MSG SET
+			  MOD_DT = now()
+		<if test='newYn != null and newYn != ""'>
+			, NEW_YN = #{newYn}
+		</if>
+		<if test='delYn != null and delYn != ""'>
+			, DEL_YN = #{delYn}
+		</if>
+		WHERE
+			CNTR_NO = #{cntrNo}
+	</update>
+	
+	<update id="updateThreadPushMsg" parameterType="NoticeMsg">
+		/* mybatis.mapper.cms.updatePushMsg : 알림 정보의 신규여부, 삭제여부를 갱신한다. */
+		UPDATE TB_THREAD_PUSH_SEND SET
+			  MOD_DT = now()
+		<if test='newYn != null and newYn != ""'>
+			, NEW_YN = #{newYn}
+		</if>
+		<if test='delYn != null and delYn != ""'>
+			, DEL_YN = #{delYn}
+		</if>
+		WHERE
+			<choose>
+				<when test="cntrNo != null and cntrNo != ''">
+					CNTR_NO = #{cntrNo}	
+				</when>
+				<when test="userId != null and userId != ''">
+					USER_ID = #{userId}
+				</when>
+			</choose> 
+	</update>
+
+	<update id="updateNotiMsgOne" parameterType="NoticeMsg">
+		/* mybatis.mapper.cms.updateNotiMsgOne : 알림(개별) 정보의 신규여부, 삭제여부를 갱신한다. */
+		UPDATE TB_NOTICE_MSG SET
+			  MOD_DT = now()
+		<if test='newYn != null and newYn != ""'>
+			, NEW_YN = #{newYn}
+		</if>
+		<if test='delYn != null and delYn != ""'>
+			, DEL_YN = #{delYn}
+		</if>
+		WHERE
+			NOTI_MSG_SEQ = #{notiMsgSeq}
+	</update>
+		
+	<select id="getTermsInfo" resultType="Terms">
+		/* mybatis.mapper.cms.getTermsInfo : 약관 정보를 조회한다. html 내용*/
+		WITH MAX_VRSN AS (
+			SELECT
+				MAX(TERMS_VRSN)		AS TERMS_VRSN
+				, TERMS_TP
+			FROM 
+				TB_TERMS
+			GROUP BY 
+				TERMS_TP
+		)
+		SELECT
+			  MAX(CASE WHEN A.TERMS_TP = 'G0001' THEN A.TERMS_VRSN END) PI_USE_TERMS_VRSN
+			, MAX(CASE WHEN A.TERMS_TP = 'G0001' THEN A.TERMS_CONTENTS END) PI_USE_TERMS_CONTENTS
+			, MAX(CASE WHEN A.TERMS_TP = 'G0002' THEN A.TERMS_VRSN END) PI_POLICY_TERMS_VRSN
+			, MAX(CASE WHEN A.TERMS_TP = 'G0002' THEN A.TERMS_CONTENTS END) PI_POLICY_TERMS_CONTENTS
+			, MAX(CASE WHEN A.TERMS_TP = 'G0003' THEN A.TERMS_VRSN END) MKT_RCV_TERMS_VRSN
+			, MAX(CASE WHEN A.TERMS_TP = 'G0003' THEN A.TERMS_CONTENTS END) MKT_RCV_TERMS_CONTENTS
+			, MAX(CASE WHEN A.TERMS_TP = 'G0004' THEN A.TERMS_VRSN END) PI_PROCESS_TERMS_VRSN
+			, MAX(CASE WHEN A.TERMS_TP = 'G0004' THEN A.TERMS_CONTENTS END) PI_PROCESS_TERMS_CONTENTS
+			, MAX(CASE WHEN A.TERMS_TP = 'G0005' THEN A.TERMS_VRSN END) OPN_SRC_TERMS_VRSN
+			, MAX(CASE WHEN A.TERMS_TP = 'G0005' THEN A.TERMS_CONTENTS END) OPN_SRC_TERMS_CONTENTS
+			, MAX(CASE WHEN A.TERMS_TP = 'G0006' THEN A.TERMS_VRSN END) OPN_SRC_IOS_TERMS_VRSN
+			, MAX(CASE WHEN A.TERMS_TP = 'G0006' THEN A.TERMS_CONTENTS END) OPN_SRC_IOS_TERMS_CONTENTS
+			, MAX(CASE WHEN A.TERMS_TP = 'G0007' THEN A.TERMS_VRSN END) OPT2_TERMS_VRSN
+			, MAX(CASE WHEN A.TERMS_TP = 'G0007' THEN A.TERMS_CONTENTS END) OPT2_TERMS_CONTENTS
+			, MAX(CASE WHEN A.TERMS_TP = 'G0008' THEN A.TERMS_VRSN END) OPT3_TERMS_VRSN
+			, MAX(CASE WHEN A.TERMS_TP = 'G0008' THEN A.TERMS_CONTENTS END) OPT3_TERMS_CONTENTS
+			, MAX(CASE WHEN A.TERMS_TP = 'G0009' THEN A.TERMS_VRSN END) OPT4_TERMS_VRSN
+			, MAX(CASE WHEN A.TERMS_TP = 'G0009' THEN A.TERMS_CONTENTS END) OPT4_TERMS_CONTENTS
+			, MAX(CASE WHEN A.TERMS_TP = 'G0010' THEN A.TERMS_VRSN END) SHOP_TERMS_VRSN
+			, MAX(CASE WHEN A.TERMS_TP = 'G0010' THEN A.TERMS_CONTENTS END) SHOP_TERMS_CONTENTS
+		FROM
+			TB_TERMS A JOIN MAX_VRSN B
+		ON		A.TERMS_VRSN	= B.TERMS_VRSN
+			AND A.TERMS_TP		= B.TERMS_TP
+	</select>
+	
+	<select id="getTermsAgreeInfo" resultType="Terms">
+		/* mybatis.mapper.cms.getTermsAgreeInfo : 약관 정보를 조회한다. url 링크*/
+		SELECT
+			  MAX(CASE WHEN A.TERMS_TP = 'G0001' THEN A.TERMS_VRSN END) PI_USE_TERMS_VRSN
+			 , MAX(CASE WHEN A.TERMS_TP = 'G0002' THEN A.TERMS_VRSN END) PI_POLICY_TERMS_VRSN
+			 , MAX(CASE WHEN A.TERMS_TP = 'G0003' THEN A.TERMS_VRSN END) MKT_RCV_TERMS_VRSN
+			 , MAX(CASE WHEN A.TERMS_TP = 'G0004' THEN A.TERMS_VRSN END) PI_PROCESS_TERMS_VRSN
+			 , MAX(CASE WHEN A.TERMS_TP = 'G0005' THEN A.TERMS_VRSN END) OPN_SRC_TERMS_VRSN
+			 , MAX(CASE WHEN A.TERMS_TP = 'G0006' THEN A.TERMS_VRSN END) OPN_SRC_IOS_TERMS_VRSN
+			 , MAX(CASE WHEN A.TERMS_TP = 'G0007' THEN A.TERMS_VRSN END) OPT2_TERMS_VRSN
+			 , MAX(CASE WHEN A.TERMS_TP = 'G0008' THEN A.TERMS_VRSN END) OPT3_TERMS_VRSN
+			 , MAX(CASE WHEN A.TERMS_TP = 'G0009' THEN A.TERMS_VRSN END) OPT4_TERMS_VRSN
+			 , MAX(CASE WHEN A.TERMS_TP = 'G0010' THEN A.TERMS_VRSN END) SHOP_TERMS_VRSN
+			 , MAX(CASE WHEN A.TERMS_TP = 'G0001' THEN B.CODE_NM END) PI_USE_TERMS_URL
+			 , MAX(CASE WHEN A.TERMS_TP = 'G0002' THEN B.CODE_NM END) PI_POLICY_TERMS_URL
+			 , MAX(CASE WHEN A.TERMS_TP = 'G0003' THEN B.CODE_NM END) MKT_RCV_TERMS_URL
+			 , MAX(CASE WHEN A.TERMS_TP = 'G0004' THEN B.CODE_NM END) PI_PROCESS_TERMS_URL
+		 	 , MAX(CASE WHEN A.TERMS_TP = 'G0005' THEN B.CODE_NM END) OPN_SRC_TERMS_URL
+		 	 , MAX(CASE WHEN A.TERMS_TP = 'G0006' THEN B.CODE_NM END) OPN_SRC_IOS_TERMS_URL
+			 , MAX(CASE WHEN A.TERMS_TP = 'G0007' THEN B.CODE_NM END) OPT2_TERMS_URL
+			 , MAX(CASE WHEN A.TERMS_TP = 'G0008' THEN B.CODE_NM END) OPT3_TERMS_URL
+			 , MAX(CASE WHEN A.TERMS_TP = 'G0009' THEN B.CODE_NM END) OPT4_TERMS_URL
+			 , MAX(CASE WHEN A.TERMS_TP = 'G0010' THEN B.CODE_NM END) SHOP_TERMS_URL
+		FROM
+			TB_TERMS A JOIN TM_GROUP_CODE B 
+		ON 	B.CODE_ID = A.TERMS_TP
+		WHERE 	B.GRP_CODE_ID = 'TERMS_URL'
+	</select>
+	
+	<select id="getNoticeList" resultType="Notice">
+		/* mybatis.mapper.cms.getNoticeList : 공지사항 목록을 조회한다. */
+		<if test='stIdx != null and stIdx != ""'>
+			<include refid="pagePrefix"/>
+		</if>
+		SELECT 
+			  A.NOTICE_SEQ
+			, A.TITLE
+			, A.CONTENTS
+			, A.POPUP_YN
+			, A.POPUP_IMG_URL
+			, A.REG_DT
+			, A.MOD_DT
+			, ROW_NUMBER() OVER(ORDER BY A.REG_DT DESC) 		AS RNUM
+		FROM 
+			TB_NOTICE A
+		WHERE
+				A.USE_YN	= 'Y'
+		<if test='popupYn != null and popupYn != ""'>
+			AND A.POPUP_YN	= #{popupYn}
+			AND TO_CHAR(now(), 'YYYYMMDDHH24MI') BETWEEN NOTICE_ST_DT AND NOTICE_ED_DT
+		</if>
+		ORDER BY 
+			  A.REG_DT 		DESC
+		<if test='stIdx != null and stIdx != ""'>
+			<include refid="pageSuffix"/>
+		</if>
+	</select>
+	
+
+	<select id="getNewNoticeList" resultType="Notice">
+		/* mybatis.mapper.cms.getNewNoticeList : 공지사항 목록을 조회한다.(뉴버젼) */
+		SELECT 
+			  A.NOTICE_SEQ
+			, A.TITLE
+			, A.CONTENTS
+			, A.POPUP_YN
+			, A.POPUP_IMG_URL
+			, A.REG_DT
+			, A.MOD_DT
+			, A.BANNER_YN
+			, A.BANNER_ICON_SEQ
+			, D.ICON_URL
+			, ROW_NUMBER() OVER(ORDER BY A.REG_DT DESC) 		AS RNUM
+		FROM 
+			TB_NOTICE A
+			LEFT JOIN TB_ICONS D
+				ON A.BANNER_ICON_SEQ = D.ICON_SEQ
+		WHERE
+				A.USE_YN	= 'Y'
+			AND TO_CHAR(now(), 'YYYYMMDDHH24MI') BETWEEN NOTICE_ST_DT AND NOTICE_ED_DT
+		ORDER BY 
+			  A.REG_DT 		DESC
+	</select>
+
+	<select id="getHiddenEventList" resultType="Event">
+		/* mybatis.mapper.cms.getHiddenEventList : 이벤트 목록을 조회한다. */
+		SELECT 
+			  A.EVT_SEQ
+			, A.TITLE
+			, A.CONTENTS
+			, A.EVT_TP
+			, A.EVT_ST_DT
+			, A.EVT_ED_DT
+			, A.BTN_LBL
+			, A.BTN_DTL_LBL
+			, A.LINK_URL
+			, A.LIST_IMG_URL
+			, A.BANNER_YN
+			, A.BANNER_IMG_URL
+			, A.POPUP_YN
+			, A.POPUP_IMG_URL
+			, A.REG_DT
+			, A.MOD_DT
+			, CASE WHEN B.EVT_SEQ IS NULL THEN 'N' ELSE 'Y' END AS APPL_YN
+			, COALESCE(B.WIN_YN, 'N')							AS WIN_YN
+			, CASE WHEN (TO_CHAR(now(), 'YYYYMMDDHH24MISS') BETWEEN EVT_ST_DT AND EVT_ED_DT) = TRUE THEN 'N' ELSE 'Y' END	AS END_YN
+			, CASE 
+				WHEN TO_CHAR(now(), 'YYYYMMDDHH24MISS') <![CDATA[ < ]]> EVT_ST_DT THEN 'P' 
+				WHEN (TO_CHAR(now(), 'YYYYMMDDHH24MISS') BETWEEN EVT_ST_DT AND EVT_ED_DT) = TRUE THEN 'I' 
+				ELSE 'E' END	AS PROGRESS_TYPE
+			, ROW_NUMBER() OVER(ORDER BY A.REG_DT DESC) 		AS RNUM
+			, COALESCE(A.MEMBER_POINT_YN, 'N') AS MEMBER_POINT_YN
+			, A.MEMBER_POINT_DIV_AMT
+			, A.MEMBER_POINT_PAY_AMT
+			, A.HIDDEN_IMG_URL
+			, A.HIDDEN_ICON_IMG_URL
+		FROM 
+				TB_EVENT A LEFT JOIN TB_EVENT_APPL B
+					ON		A.EVT_SEQ	= B.EVT_SEQ
+						AND B.CNTR_NO	= #{cntrNo}
+		WHERE
+				COALESCE(A.HIDDEN_YN, 'N')		= 'Y'
+			AND A.EVT_STATUS = 'Y'
+		<if test='evtSeq != null and evtSeq != ""'>
+			AND A.EVT_SEQ		= #{evtSeq}
+		</if>	
+		ORDER BY A.EVT_SEQ
+	</select>
+
+	<select id="getEventGifList" resultType="Event">
+		/* mybatis.mapper.cms.getEventGifList : 이벤트 목록(메인왼쪽 움직이는 gif)을 조회한다. */
+		SELECT 
+			  A.EVT_SEQ
+			, A.TITLE
+			, A.EVT_TP
+			, A.LGIF_USE_YN
+			, A.LGIF_URL
+			, A.LGIF_ST_DT
+			, A.LGIF_ED_DT
+		FROM 
+				TB_EVENT A
+		WHERE
+				COALESCE(A.LGIF_USE_YN, 'N')		= 'Y'
+			AND A.EVT_STATUS = 'Y'
+			AND TO_CHAR(now(), 'YYYYMMDDHH24MI') BETWEEN A.LGIF_ST_DT AND A.LGIF_ED_DT
+		ORDER BY A.EVT_SEQ DESC
+		LIMIT 1
+	</select>
+
+	<select id="getEventApplList" resultType="Event">
+		/* mybatis.mapper.cms.getEventApplList : 이벤트 응모 목록을 조회한다. */
+		SELECT 
+			  EVT_SEQ
+			, CNTR_NO
+			, WIN_YN
+			, REG_DT
+		FROM 
+			TB_EVENT_APPL
+		WHERE
+				EVT_SEQ		= #{evtSeq}
+		<if test='cntrNo != null and cntrNo != ""'>
+			AND CNTR_NO		= #{cntrNo}
+		</if>		
+	</select>
+	
+	<insert id="insertEventAppl" parameterType="NoticeMsg">
+		/* mybatis.mapper.cms.insertEventAppl : 이벤트에 응모한다. */
+		INSERT INTO	TB_EVENT_APPL
+		(
+			  EVT_SEQ
+			, CNTR_NO
+			, WIN_YN
+			, REG_DT
+		) VALUES
+		(
+			  #{evtSeq}
+			, #{cntrNo}
+			, 'N'
+			, now()
+		)
+	</insert>
+	
+	<insert id="insertEventMasterAppl" parameterType="EventAppl">
+		/* mybatis.mapper.cms.insertEventMasterAppl : 이벤트에 응모한다. */
+		INSERT INTO	TB_EVENT_MASTER_APPL
+		(
+			  EVT_SEQ
+			<if test='cntrNo != null and cntrNo != ""'>
+			, CNTR_NO
+			</if>
+			<if test='userId != null and userId != ""'>
+			, USER_ID
+			</if>
+			, WIN_YN
+			, ATTEND_DAY
+			, REG_DT
+		) VALUES
+		(
+			  #{evtSeq}
+			<if test='cntrNo != null and cntrNo != ""'>
+			, #{cntrNo}
+			</if>
+			<if test='userId != null and userId != ""'>
+			, #{userId}
+			</if>
+			, #{winYn}
+			<choose>
+        		<when test ='cntrNo != null and cntrNo != ""'>
+        			, (SELECT (MAX(CHECK_DAY)) AS CNT FROM TB_ATTEND_DAY_CHECK WHERE CNTR_NO= #{cntrNo} AND EVT_SEQ = #{evtSeq})
+        		</when>
+        		<otherwise>
+        	    	, (SELECT (MAX(CHECK_DAY)) AS CNT FROM TB_ATTEND_DAY_CHECK WHERE USER_ID= #{userId} AND EVT_SEQ = #{evtSeq})
+        		</otherwise>
+        	</choose>
+			, now()
+		)
+	</insert>
+
+	<insert id="insertEventLinkAppl" parameterType="EventAppl">
+		/* mybatis.mapper.cms.insertEventLinkAppl : 바로가기(link) 이력을 저장한다. */
+		INSERT INTO	TB_EVENT_LINK_APPL
+		(
+			  EVT_SEQ
+			, CNTR_NO
+			<if test='userId != null and userId != ""'>
+			, USER_ID
+			</if>
+			, REG_DT
+		) VALUES
+		(
+			  #{evtSeq}
+			, #{cntrNo}
+			<if test='userId != null and userId != ""'>
+			, #{userId}
+			</if>
+			, now()
+		)
+	</insert>
+		
+	<select id="getCallingPlanList" resultType="CallingPlan">
+		/* mybatis.mapper.cms.getCallingPlanList : 사용 가능 요금제 목록을 조회한다. */
+		SELECT 
+			  PP_CD
+			, PP_NM
+			, PP_CAT_L
+			, PP_CAT_S_NM
+			, EGG_YN
+			, INF_YN
+			, Y24_YN
+			, YTEEN_YN
+			, JOIN_PS_YN
+			, GIFT_PS_YN
+			, DBOX_USE_PS_YN
+			, LONG_PS_YN
+			, CASE WHEN ROULET_PS_YN = 'Y' THEN CASE WHEN DATE_PART('DAY', NOW()) > 24 THEN 'Y' ELSE 'A' END ELSE ROULET_PS_YN END AS ROULET_PS_YN
+			, LATER_CHG_USE_PS_YN
+			, MEM_CHG_USE_PS_YN
+			, PULL_PS_YN
+			, PULL_PS_AMT
+			, THREE_USE_PS_YN
+			, HALF_USE_PS_YN
+			, DBL_USE_PS_YN
+			, CHG_USE_PS_YN
+			, USE_YN
+			, FGINF_YN
+			, REG_DT
+		FROM 
+			TM_CALLING_PLAN
+		WHERE
+				USE_YN 		= 'Y'
+		<if test='ppCd != null and ppCd != ""'>
+			AND PP_CD		= #{ppCd}
+		</if>
+	</select>
+	
+	<select id="getGrpCodeList" resultType="GrpCode">
+		/* mybatis.mapper.cms.getGrpCodeList : 그룹코드 목록을 조회한다. */
+		SELECT
+			  TRIM(CODE_ID) AS CODE_ID
+			, CODE_NM
+			, CODE_KEY
+			, GRP_CODE_ID
+			, GRP_CODE_NM
+			, PARENT_GRP_CODE_ID
+			, PARENT_CODE_ID
+			, REMARKS
+			, REG_DT
+			, MOD_DT
+		FROM
+			TM_GROUP_CODE
+		<where>
+			<choose>
+				<when test='codeNm != null and codeNm != ""'>
+					GRP_CODE_ID		= #{grpCodeId}
+					AND CODE_NM		= #{codeNm} 
+					AND USE_YN		= 'Y'
+				</when>
+				<otherwise>
+					<if test='grpCodeId != null and grpCodeId != ""'>
+						GRP_CODE_ID		= #{grpCodeId}
+					</if>
+				</otherwise>
+			</choose>
+		</where>
+	</select>
+	
+	<!-- YBox 부분차단 (단말) -->
+	<select id="getYBoxSrvBlockList" resultType="GrpCode">
+		/* mybatis.mapper.cms.getYBoxSrvBlockList : 그룹목록과 Y박스 부분차단(단말) 목록을 조회한다. */
+		SELECT TRIM(CODE_ID) AS CODE_ID
+			 , CODE_NM
+			 , CODE_KEY
+			 , GRP_CODE_ID
+			 , GRP_CODE_NM
+			 , PARENT_GRP_CODE_ID
+			 , PARENT_CODE_ID
+			 , REMARKS
+			 , REG_DT
+			 , MOD_DT
+			 , USE_YN
+		FROM TM_GROUP_CODE
+		WHERE GRP_CODE_ID in ('CONTINGENCY_FLAG', 'SRV_BLOCK')
+		  AND CODE_KEY != 'SERVER' 
+		ORDER BY GRP_CODE_ID ASC, ORD_SEQ ASC
+	</select>
+	
+	<!-- YBox 부분차단 (서버) -->
+	<select id="getYBoxSrvBlockServerList" resultType="GrpCode">
+		/* mybatis.mapper.cms.getYBoxSrvBlockServerList : Y박스 부분차단(서버) 목록을 조회한다. */
+		SELECT TRIM(CODE_ID) AS CODE_ID
+			 , CODE_NM
+			 , CODE_KEY
+			 , GRP_CODE_ID
+			 , GRP_CODE_NM
+			 , PARENT_GRP_CODE_ID
+			 , PARENT_CODE_ID
+			 , REMARKS
+			 , REG_DT
+			 , MOD_DT
+			 , USE_YN
+		FROM TM_GROUP_CODE
+		WHERE GRP_CODE_ID = 'SRV_BLOCK'
+		  AND CODE_KEY = 'SERVER' 
+		ORDER BY ORD_SEQ
+	</select>
+
+	<select id="getCodeNm" resultType="GrpCode">
+		/* mybatis.mapper.cms.getCodeNm : 코드을 조회한다. */
+		SELECT
+			  CODE_ID
+			, CODE_NM
+			, CODE_KEY
+			, GRP_CODE_ID
+			, GRP_CODE_NM
+			, PARENT_GRP_CODE_ID
+			, PARENT_CODE_ID
+			, REMARKS
+			, USE_YN
+			, REG_DT
+			, MOD_DT
+		FROM
+			TM_GROUP_CODE
+		WHERE GRP_CODE_ID		= #{grpCodeId}
+		AND CODE_ID 			= #{codeId}
+	</select>
+
+	<select id="getGuideList" resultType="Guide">
+		/* mybatis.mapper.cms.getGuideList : 이용안내 목록을 조회한다. */
+		SELECT
+			  SEQ
+			, GUIDE_TP
+			, TITLE
+			, CONTENTS
+			, IMG_URL
+			, ORD_SEQ
+			, USE_YN
+			, REG_DT
+			, MOD_DT
+		FROM
+			TM_GUIDE
+		WHERE
+			USE_YN	= 'Y'
+		ORDER BY ORD_SEQ
+	</select>
+
+	<select id="getDataMent" resultType="GrpCode">
+		/* mybatis.mapper.cms.getDataMent : 데이터멘트를 조회한다. */
+		WITH DATAMENT AS
+		(
+			SELECT 
+				CODE_ID
+				,PARENT_CODE_ID
+				,(ROW_NUMBER() OVER()) AS ROW_NUM
+				,CODE_NM
+			FROM TM_GROUP_CODE WHERE GRP_CODE_ID = 'DATA_MENT_S' AND PARENT_CODE_ID = #{codeId}
+		)
+		SELECT * FROM DATAMENT 
+		WHERE ROW_NUM = (MOD(CAST(TO_CHAR(NOW(), 'MMSS') AS NUMERIC),(SELECT MAX(ROW_NUM) FROM DATAMENT))+1)
+	</select>
+	
+	<insert id="insertAuthSms" parameterType="Map" useGeneratedKeys="true" keyProperty="authSmsSeq" keyColumn="auth_sms_seq">
+		/* mybatis.mapper.cms.insertAuthSms : sms 정보를 저장한다. */
+		INSERT INTO TB_AUTH_SMS
+		(
+			CNTR_NO
+			, REV_MOBILE_NO
+			, AUTH_SMS_YN
+			, AUTH_TP
+			, FAIL_CNT
+			, LAST_FAIL_DT
+			, MOD_DT
+			, REG_DT
+		) VALUES (
+			  #{cntrNo}
+			, #{telno}
+			, 'N'
+			, #{authTp}
+			, 0
+			, now()
+			, now()
+			, now()
+		)
+	</insert>
+	
+	<update id="updateAuthSmsFail" parameterType="SendSms">
+		/* mybatis.mapper.cms.updateAuthSmsFail : 문자 인증 실패 카운트를 업데이트 한다. */
+		UPDATE 
+			TB_AUTH_SMS
+		SET 
+			LAST_FAIL_DT = now()
+			, MOD_DT = now()
+			<if test='isInit == "Y"'>
+				, FAIL_CNT = 0
+			</if>
+			<if test='isInit != "Y"'>
+				, FAIL_CNT = FAIL_CNT + 1
+			</if>
+		WHERE 
+				AUTH_SMS_SEQ 		= #{authSmsSeq} 
+			AND CNTR_NO		 	= #{cntrNo}
+	</update>
+	
+	<update id="updateAuthSmsYn" parameterType="SendSms">
+		/* mybatis.mapper.cms.updateAuthSmsYn : 문자 인증 여부를 업데이트 한다. */
+		UPDATE 
+			TB_AUTH_SMS
+		SET 
+			MOD_DT = now()
+			, AUTH_SMS_YN = #{authSmsYn}
+		WHERE 
+				AUTH_SMS_SEQ 		= #{authSmsSeq} 
+			AND CNTR_NO		 	= #{cntrNo}
+	</update>
+
+	<update id="updateAuthSmsUser" parameterType="SendSms">
+		/* mybatis.mapper.cms.updateAuthSmsUser : 문자 인증 여부를 업데이트 한다. */
+		UPDATE 
+			TB_USER
+		SET
+			  AUTH_YN  = #{authSmsYn}
+			  ,MOD_DT = now()
+		WHERE
+			CNTR_NO			= #{cntrNo}
+	</update>
+
+	<select id="getAuthSmsFailCnt" parameterType="SendSms" resultType="SendSms" useCache="true">
+		/* mybatis.mapper.cms.getAuthSmsFailCnt : 최근 sms 인증 에러 카운트를 조회한다. */
+		SELECT 
+			CNTR_NO
+			, REV_MOBILE_NO
+			, AUTH_SMS_YN
+			, FAIL_CNT
+			, LAST_FAIL_DT
+		FROM 
+			TB_AUTH_SMS
+		WHERE
+				AUTH_SMS_SEQ 		= #{authSmsSeq} 
+			AND CNTR_NO		 	= #{cntrNo}
+	</select>
+	
+	<select id="getCollaboEventList" resultType="EventYData">
+		/* mybatis.mapper.cms.getCollaboEventList : Y콜라보 이벤트 목록을 조회한다. */
+		<if test='stIdx != null and stIdx != ""'>
+			<include refid="pagePrefix"/>
+		</if>
+		SELECT 
+			  A.EVT_SEQ
+			, A.TITLE
+			, A.CONTENTS
+			, A.EVT_TP
+			, A.EVT_ST_DT
+			, A.EVT_ED_DT
+			, A.BTN_LBL
+			, A.BTN_DTL_LBL
+			, A.LINK_URL
+			, A.LIST_IMG_URL
+			, C.EVT_WIN_IMG_URL
+			, C.EVT_END_IMG_URL
+			, A.BANNER_YN
+			, A.BANNER_IMG_URL
+			, A.POPUP_YN
+			, A.POPUP_IMG_URL
+			, A.REG_DT
+			, A.MOD_DT
+			, CASE WHEN B.EVT_SEQ IS NULL THEN 'N' ELSE 'Y' END AS APPL_YN
+			, COALESCE(B.WIN_YN, 'N')							AS WIN_YN
+			, CASE WHEN (TO_CHAR(now(), 'YYYYMMDDHH24MISS') BETWEEN EVT_ST_DT AND EVT_ED_DT) = TRUE THEN 'N' ELSE 'Y' END	AS END_YN
+			, CASE 
+				WHEN TO_CHAR(now(), 'YYYYMMDDHH24MISS') <![CDATA[ < ]]> EVT_ST_DT THEN 'P' 
+				WHEN (TO_CHAR(now(), 'YYYYMMDDHH24MISS') BETWEEN EVT_ST_DT AND EVT_ED_DT) = TRUE THEN 'I' 
+				ELSE 'E' END	AS PROGRESS_TYPE
+			, ROW_NUMBER() OVER(ORDER BY A.REG_DT DESC) 		AS RNUM
+			, COALESCE(A.MEMBER_POINT_YN, 'N') AS MEMBER_POINT_YN
+			, B.POST
+			, B.ADDR
+			, B.ADDR_DTL
+			, A.MEMBER_POINT_DIV_AMT
+			, A.MEMBER_POINT_PAY_AMT
+			, A.HIDDEN_IMG_URL
+			, TO_CHAR(C.APPL_ST_DT, 'YYYYMMDD') AS APPL_ST_DT
+			, TO_CHAR(C.APPL_ED_DT, 'YYYYMMDD') AS APPL_ED_DT
+			, TO_CHAR(C.WIN_DT, 'YYYYMMDD') AS WIN_DT
+			, TO_CHAR(C.DELIVER_DT, 'YYYYMMDD') AS DELIVER_DT
+			, C.GOODS_IMG_URL
+			, C.TERMS_LBL1
+			, C.TERMS_LBL2
+			, C.TERMS_LBL3
+			, C.TERMS_CONTENTS1
+  			, C.TERMS_CONTENTS2
+  			, C.TERMS_CONTENTS3
+			, CASE WHEN TO_CHAR(DATE_TRUNC('DAY',TO_DATE(A.EVT_ED_DT, 'YYYYMMDDHH24MISSMS')) - DATE_TRUNC('DAY',NOW()), 'DD')::NUMERIC <![CDATA[ < ]]> 0 THEN 0 ELSE TO_CHAR(DATE_TRUNC('DAY',TO_DATE(A.EVT_ED_DT, 'YYYYMMDDHH24MISSMS')) - DATE_TRUNC('DAY',NOW()), 'DD')::NUMERIC END AS REMAINDAY
+			, CASE	WHEN A.EVT_ED_DT <![CDATA[ < ]]> TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') AND   TO_CHAR(C.WIN_DT, 'YYYYMMDDHH24MISS') <![CDATA[ < ]]> TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') AND COALESCE(B.WIN_YN, 'N') = 'Y' THEN 'ES001'
+					WHEN A.EVT_ED_DT <![CDATA[ < ]]> TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') AND   TO_CHAR(C.WIN_DT, 'YYYYMMDDHH24MISS') <![CDATA[ < ]]> TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') AND COALESCE(B.WIN_YN, 'N') = 'N' THEN 'ES002' 
+					WHEN A.EVT_ED_DT <![CDATA[ < ]]> TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') AND   TO_CHAR(C.WIN_DT, 'YYYYMMDDHH24MISS') <![CDATA[ > ]]> TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') THEN 'ES003'
+					WHEN (TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') BETWEEN EVT_ST_DT AND EVT_ED_DT) = TRUE AND B.WIN_YN IS NOT NULL THEN 'ES004'
+					WHEN (TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') BETWEEN EVT_ST_DT AND EVT_ED_DT) = TRUE THEN 'ES005'
+					WHEN (A.EVT_ST_DT <![CDATA[ > ]]> TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') OR A.EVT_ED_DT <![CDATA[ < ]]> TO_CHAR(NOW(), 'YYYYMMDDHH24MISS')) AND C.WIN_DT IS NULL THEN 'ES002'
+					ELSE '-' END AS EVT_STAT
+			, CASE	WHEN A.EVT_ED_DT <![CDATA[ < ]]> TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') AND   TO_CHAR(C.WIN_DT, 'YYYYMMDDHH24MISS') <![CDATA[ < ]]> TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') AND COALESCE(B.WIN_YN, 'N') = 'Y' THEN '당첨'
+					WHEN A.EVT_ED_DT <![CDATA[ < ]]> TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') AND   TO_CHAR(C.WIN_DT, 'YYYYMMDDHH24MISS') <![CDATA[ < ]]> TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') AND COALESCE(B.WIN_YN, 'N') = 'N' THEN '종료' 
+					WHEN A.EVT_ED_DT <![CDATA[ < ]]> TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') AND   TO_CHAR(C.WIN_DT, 'YYYYMMDDHH24MISS') <![CDATA[ > ]]> TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') THEN '발표' || Chr(13) || Chr(10) || '대기중'
+					WHEN (TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') BETWEEN EVT_ST_DT AND EVT_ED_DT) = TRUE AND B.WIN_YN IS NOT NULL THEN '응모' || Chr(13) || Chr(10) || '완료'
+					WHEN (TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') BETWEEN EVT_ST_DT AND EVT_ED_DT) = TRUE THEN '진행중'
+					WHEN (A.EVT_ST_DT <![CDATA[ > ]]> TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') OR A.EVT_ED_DT <![CDATA[ < ]]> TO_CHAR(NOW(), 'YYYYMMDDHH24MISS')) AND C.WIN_DT IS NULL THEN '종료'
+					ELSE '-' END AS EVT_STAT_NM
+		FROM 
+				TB_EVENT A LEFT JOIN TB_EVENT_APPL B
+					ON		A.EVT_SEQ	= B.EVT_SEQ
+						AND B.CNTR_NO	= #{cntrNo}
+				LEFT JOIN TB_Y_EVENT C
+					ON		A.EVT_SEQ	= C.EVT_SEQ	
+		WHERE
+				A.USE_YN 		= 'Y'
+			AND A.EVT_STATUS = 'Y'
+		<if test='evtTp != null and evtTp != ""'>
+			AND A.EVT_TP = #{evtTp}
+		</if>	
+		<if test='bannerYn == "Y"'>
+ 			AND TO_CHAR(now(), 'YYYYMMDDHH24MI') BETWEEN A.EVT_ST_DT AND A.EVT_ED_DT
+		</if>
+		<if test='evtSeq != null and evtSeq != ""'>
+			AND A.EVT_SEQ		= #{evtSeq}
+		</if>	
+		ORDER BY CASE WHEN (TO_CHAR(now(), 'YYYYMMDDHH24MISS') BETWEEN EVT_ST_DT AND EVT_ED_DT) = TRUE THEN '0' ELSE '1' END , A.EVT_ST_DT DESC
+		<if test='stIdx != null and stIdx != ""'>
+			<include refid="pageSuffix"/>
+		</if>
+	</select>
+	
+	<insert id="insertApplCollaboEvent" parameterType="EventAppl">
+		/* mybatis.mapper.cms.insertApplCollaboEvent : Y콜라보 응모 정보를 저장한다. */
+		INSERT INTO	TB_EVENT_APPL
+		(
+			  EVT_SEQ
+			, CNTR_NO
+			, WIN_YN
+			, REG_DT
+			, NAME
+			, MOBILE_NO
+			, POST
+			, ADDR
+			, ADDR_DTL
+			, JIBUN_ADDR
+			, JIBUN_ADDR_DTL
+			, ADDR_CLEAR_YN
+		) VALUES
+		(
+			  #{evtSeq}
+			, #{cntrNo}
+			, 'N'
+			, now()
+			, #{name}
+			, #{mobileNo}
+			, #{post}
+			, #{addr}
+			, #{addrDtl}
+			, #{jibunAddr}
+			, #{jibunAddrDtl}
+			, #{addrClearYn}
+		)
+	</insert>
+	
+	<update id="updateApplCollaboEvent" parameterType="EventAppl">
+		/* mybatis.mapper.cms.updateApplCollaboEvent : Y콜라보 응모 정보를 수정한다. */
+		UPDATE TB_EVENT_APPL SET
+			  NAME 			= #{name}
+			, MOBILE_NO		= #{mobileNo}
+			, POST			= #{post}
+			, ADDR			= #{addr}
+			, ADDR_DTL		= #{addrDtl}
+			, JIBUN_ADDR	= #{jibunAddr}
+			, JIBUN_ADDR_DTL= #{jibunAddrDtl}
+			, ADDR_CLEAR_YN = #{addrClearYn}
+			, MOD_DT		= now()
+			WHERE EVT_SEQ 	= #{evtSeq}
+				AND CNTR_NO = #{cntrNo}
+	</update>
+	
+	<select id="getLampMenuList" resultType="LampMenu">
+		/* mybatis.mapper.cms.getLampMenuInfo : 램프메뉴 정보를 조회한다. */
+		SELECT
+			  LAMP_SEQ
+			, LAMP_NM
+			, LAMP_URL
+			, LAMP_OPERATION
+			, LAMP_TYPE
+			, LAMP_EVENT
+			, LAMP_SERVICE
+			, USE_YN
+			, REG_DT
+		FROM
+			TM_LAMP_MENU
+		WHERE
+			USE_YN	= 'Y'
+			AND LAMP_SERVICE = #{lampService}
+	</select>
+	
+	<select id="getRsaPublicKeyInfo" resultType="RsaKeyInfo">
+		/* mybatis.mapper.cms.getRsaPublicKeyInfo : RSA 코드를 조회한다. */
+		SELECT KEY_SEQ
+			 , PUBLIC_KEY
+			 , PRIVATE_KEY			
+			 , MOD_DT
+			 , REG_DT
+		  FROM TB_RSA_KEY_INFO
+		 WHERE KEY_SEQ	= #{keySeq}
+	</select>
+	
+	<insert id="insertKosApiAccess" parameterType="KosAccess">
+		/* mybatis.mapper.cms.insertKosApiAccess : KOS API 연동 정보를 저장한다. */
+		INSERT INTO	TH_API_KOS_ACCESS
+		(
+			CNTR_NO
+			, CALLER_IP_ADDR
+			, API_URL
+			, SVC_NAME
+			, RESPONSE_TITLE
+			, RESPONSE_BASC
+			, RESPONSE_DTAL
+			, REG_DT
+			, ACCESS_SERVER_IP_ADDR
+			, RESPONSE_TYPE
+			, RESPONSE_CODE
+			, GLOBAL_NO
+			, ETC
+		)
+		VALUES
+		(
+			  #{cntrNo}
+			, #{callerIpAddr}
+			, #{apiUrl}
+			, #{svcName}
+			, #{responseTitle}
+			, #{responseBasc}
+			, #{responseDtal}
+			, now()
+			, #{accessServerIpAddr}
+			, #{responseType}
+			, #{responseCode}
+			, #{globalNo}
+			, #{etc}
+		)
+	</insert>
+	
+	<insert id="insertShopNotiMsg" parameterType="NoticeMsg">
+		/* mybatis.mapper.cms.insertShopNotiMsg : 220412 shop 알림 정보를 저장한다. */
+		INSERT INTO	TB_SHOP_NOTICE_MSG
+		(
+			  USER_ID
+			, NOTI_TITLE
+			, NOTI_MSG
+			, NOTI_TP
+			, NOTI_TP_DTL
+			, LINK_URL
+			, IMG_LINK_URL
+			, DEL_YN
+			, NEW_YN
+			, PUSH_RESULT_CD
+			, REG_DT
+			, MOD_DT
+		) VALUES
+		(
+			  #{userId}
+			, #{notiTitle}
+			, #{notiMsg}
+			, #{notiTp}
+			, #{notiTpDtl}
+			, #{linkUrl}
+			, #{imgUrl}
+			, 'N'
+			, 'Y'
+			, #{pushResultCd}
+			, now()
+			, now()
+		)
+	</insert>
+	
+	<select id="getShopNotiMsgNewCount" resultType="int">
+		/* mybatis.mapper.cms.getShopNotiMsgNewCount : 220413 알림 목록을 조회한다. */
+			SELECT 
+				COUNT(NOTI_MSG_SEQ) AS NOTICNT
+			FROM 
+				TB_SHOP_NOTICE_MSG
+			WHERE
+				DEL_YN 		= 'N'
+			AND USER_ID		= #{userId}
+			AND NEW_YN		= 'Y'
+			AND REG_DT > now() - interval '3 months'
+	</select>	
+	
+	<select id="getShopNotiMsgList" parameterType="NoticeMsg" resultType="NoticeMsg">
+		/* mybatis.mapper.cms.getShopNotiMsgList : 220502 shop 알림 목록을 조회한다. */
+		SELECT 
+			  NOTI_MSG_SEQ
+			, 'SHOP' AS NOTI_TABLE_TP
+			, USER_ID
+			, NOTI_TITLE
+			, NOTI_MSG
+			, NOTI_TP
+			, (SELECT CODE_NM FROM TM_GROUP_CODE WHERE GRP_CODE_ID = 'NOTI_MSG_TYPE' AND CODE_ID = NOTI_TP)	AS NOTI_TP_NM
+			, NOTI_TP_DTL
+			, LINK_URL
+			, IMG_LINK_URL
+			, DEL_YN
+			, NEW_YN
+			, REG_DT
+			, MOD_DT
+		FROM 
+			TB_SHOP_NOTICE_MSG
+		WHERE
+				DEL_YN 		= 'N'
+			AND USER_ID		= #{userId}
+		<if test='newYn != null and newYn != ""'>
+			AND NEW_YN		= #{newYn}
+		</if>
+		AND REG_DT > now() - interval '3 months'
+		ORDER BY REG_DT DESC
+	</select>	
+	
+	<update id="updateShopNotiMsg" parameterType="NoticeMsg">
+		/* mybatis.mapper.cms.updateShopNotiMsg : Shop 알림 정보의 신규여부, 삭제여부를 갱신한다. */
+		UPDATE TB_SHOP_NOTICE_MSG SET
+			  MOD_DT = now()
+		<if test='newYn != null and newYn != ""'>
+			, NEW_YN = #{newYn}
+		</if>
+		<if test='delYn != null and delYn != ""'>
+			, DEL_YN = #{delYn}
+		</if>
+		WHERE
+			USER_ID = #{userId}
+	</update>
+		<select id="getPushMsgList" parameterType="NoticeMsg" resultType="NoticeMsg">
+		/* mybatis.mapper.cms.getPushMsgList : 준회원 PUSH 알림 목록을 조회한다. */
+		SELECT 
+			  PUSH_SEQ AS NOTI_MSG_SEQ
+			, 'CMS' AS NOTI_TABLE_TP
+			, CNTR_NO
+			, USER_ID
+			, PUSH_MSG AS NOTI_MSG
+			, NOTI_TP
+			, (SELECT CODE_NM FROM TM_GROUP_CODE WHERE GRP_CODE_ID = 'NOTI_MSG_TYPE' AND CODE_ID = NOTI_TP)	AS NOTI_TP_NM
+			, NOTI_TP_DTL
+			, '' LINK_URL
+			, 'N' REQ_RCV_YN
+			, DEL_YN
+			, NEW_YN
+			, REG_DT
+			, MOD_DT
+		FROM 
+			TB_PUSH_MSG
+		WHERE
+				DEL_YN 		= 'N'
+			AND USER_ID		= #{userId}
+			AND REG_DT > now() - interval '3 months'
+		<if test='newYn != null and newYn != ""'>
+			AND NEW_YN		= #{newYn}
+		</if>
+		ORDER BY REG_DT DESC
+	</select>
+	
+	<update id="updateUserIdPushMsg" parameterType="NoticeMsg">
+		/* mybatis.mapper.cms.updateUserIdPushMsg : userId 푸시 알림 정보의 신규여부, 삭제여부를 갱신한다. */
+		UPDATE TB_PUSH_MSG SET
+			  MOD_DT = now()
+		<if test='newYn != null and newYn != ""'>
+			, NEW_YN = #{newYn}
+		</if>
+		<if test='delYn != null and delYn != ""'>
+			, DEL_YN = #{delYn}
+		</if>
+		WHERE
+			USER_ID = #{userId}
+	</update>
+
+	<select id="getUserIdNotiMsgNewCount" resultType="int">
+		/* mybatis.mapper.cms.getUserIdNotiMsgNewCount : userid push 신규 알림 건수한다. */
+		SELECT 
+			COUNT(PUSH_SEQ) AS NOTICNT
+		FROM TB_PUSH_MSG
+		WHERE 
+			DEL_YN 		= 'N'
+		AND USER_ID		= #{userId}
+		AND NEW_YN		= 'Y'
+		AND REG_DT > now() - interval '3 months'
+	</select>	
+	
+	<select id="getBenefitBannerEventList" parameterType="BannerBenefitUser" resultType="BannerBenefitEvent">
+		/* mybatis.mapper.cms.getBenefitBannerEventList : 사용중인 혜택배너 이벤트 목록을 가져온다. */
+		SELECT *
+		FROM TB_BANNER_BENEFIT
+		WHERE DEL_YN = 'N'
+		AND USE_YN = 'Y'
+		AND TO_CHAR(now(), 'YYYYMMDDHH24MI') BETWEEN DATE_START AND DATE_END
+        AND CASE WHEN pp_cd_list = 'All' THEN pp_cd_list = 'All' ELSE pp_cd_list LIKE '%'||#{ppCd}||'%' END
+        AND CASE WHEN GENDER = 'G0003' THEN GENDER = 'G0003' ELSE GENDER = #{gender} end
+        AND CASE WHEN AGE_LIST = 'All' THEN AGE_LIST = 'All' ELSE AGE_LIST LIKE '%'||#{age}||'%' END
+        AND CASE WHEN OS_TP = 'G0003' THEN OS_TP = 'G0003' ELSE OS_TP = #{osTp} END
+        
+        <choose>
+        	<when test ='osTp != null and osTp == "G0001"'>
+        		AND CASE WHEN OS_VRSN_AOS_LIST = 'All' THEN OS_VRSN_AOS_LIST = 'All' ELSE OS_VRSN_AOS_LIST LIKE '%'||#{osVrsn}||'%' END
+        	</when>
+        	<when test ='osTp != null and osTp == "G0002"'>
+        		AND CASE WHEN OS_VRSN_IOS_LIST = 'All' THEN OS_VRSN_IOS_LIST = 'All' ELSE OS_VRSN_IOS_LIST LIKE '%'||#{osVrsn}||'%' END 
+        	</when>
+        	<otherwise>
+        		AND CASE WHEN OS_VRSN_AOS_LIST = 'All' THEN OS_VRSN_AOS_LIST = 'All' ELSE OS_VRSN_AOS_LIST = NULL END
+        		AND CASE WHEN OS_VRSN_IOS_LIST = 'All' THEN OS_VRSN_IOS_LIST = 'All' ELSE OS_VRSN_IOS_LIST = NULL END 
+        	</otherwise>
+        </choose>
+        
+        AND CASE WHEN PRF_LIST = 'All' THEN PRF_LIST ='All' ELSE
+        <choose>
+        	<when test ='prfList != null and prfList != ""'>
+        		PRF_LIST SIMILAR TO
+				<foreach collection='prfList' item='item' open="'%('||" close="||')%'" separator="||'|'||">
+					#{item}
+				</foreach>
+        	</when>
+        	<otherwise>
+        		PRF_LIST = null
+        	</otherwise>
+        </choose>
+        END
+		ORDER BY PRIORITY
+	</select>
+		
+	<insert id="insertLoginKey" parameterType="Map">
+		/* mybatis.mapper.cms.insertLoginKey : 2022.07.12 login key값을 저장한다. */
+		INSERT INTO	TB_LOGIN_KEY(
+				USER_ID
+			,	KEY_SEQ
+			,	USE_YN
+			,	REG_DT
+		) VALUES (
+				#{userId}
+			,	#{keySeq}
+			,	#{useYn}
+			,	now()
+		)
+	</insert>
+	
+	<update id="updateLoginKey" parameterType="Map">
+		/* mybatis.mapper.cms.updateLoginKey : 2022.07.12 login key값을 업데이트 한다. */
+		UPDATE TB_LOGIN_KEY SET
+			MOD_DT	=	now(),
+			<if test='keySeq != 0'>
+				KEY_SEQ	=	#{keySeq},
+			</if>
+			USE_YN	=	#{useYn}
+		WHERE	USER_ID	= #{userId}
+	</update>
+	
+	<select id="getLoginKeyCount" resultType="int">
+		/* mybatis.mapper.cms.getLoginKeyCount : 2022.07.12 login key 값을 저장여부를 조회한다. */
+		SELECT	COUNT(*)
+		FROM	TB_LOGIN_KEY
+		WHERE	USER_ID	=	#{userId}
+	</select>
+	
+	<select id="getLoginKeySeq" resultType="RsaKeyInfo">
+		/* mybatis.mapper.cms.getLoginKeySeq : 2022.07.12 login key 값을 조회한다. */
+		SELECT		KEY_SEQ
+				,	USE_YN
+		FROM	TB_LOGIN_KEY
+		WHERE	USER_ID	=	#{userId}
+	</select>
+	<select id="getPpCatLCode" resultType="EventMaster">
+		/* mybatis.mapper.cms.getPpCatLCode : 요금제 카테고리 코드을 조회한다. */
+		SELECT
+			  PP_CAT_L
+		FROM
+			TM_CALLING_PLAN
+		WHERE PP_CD		= #{ppCd}
+	</select>
+	
+	<!-- 230524 부가서비스 코드 -->
+	<select id="getVasCodeList" resultType="GrpCode">
+		/* mybatis.mapper.cms.getVasCodeList : 부가서비스 목록을 조회한다. */
+		SELECT
+			  TRIM(CODE_ID) AS CODE_ID
+			, CODE_NM
+			, CODE_KEY
+			, GRP_CODE_ID
+			, GRP_CODE_NM
+			, PARENT_GRP_CODE_ID
+			, PARENT_CODE_ID
+			, REMARKS
+			, REG_DT
+			, MOD_DT
+		FROM
+			TM_GROUP_CODE
+		WHERE
+			GRP_CODE_ID		= #{grpCodeId}
+			AND USE_YN		= 'Y'
+	</select>
+</mapper>

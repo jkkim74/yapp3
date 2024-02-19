@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<yappValidator>
+	<input>
+		<!-- 
+			API 호출 파라미터 체크. 
+			필수(required) 옵션:  true 값이 디폴트
+			type 옵션 : get,set을 가지는 객체 클래스가 디폴트
+			order 옵션 : 0 이 디폴트 
+		-->
+		
+		<!-- USER -->
+		
+		<api url="/user/join" 						desc="서비스 가입">
+			<param name="cntrNo" 						desc="계약번호" 					validator="Null"/>
+			<param name="mobileNo" 						desc="휴대폰번호" 					validator="Number"/>
+			<param name="fourteenYn" 					desc="14세여부" 					validator="YnVal"	required="false" />
+			<param name="pushRcvYn" 					desc="푸시 수신여부" 				validator="YnVal"	required="false" />
+			<param name="mktRcvYn" 						desc="마케팅 수신여부" 				validator="YnVal"	required="false" />
+			<param name="reqRcvYn" 						desc="조르기 수신여부" 				validator="YnVal"	required="false" />
+			<param name="termsAgree.piUseTermsVrsn" 		desc="개인정보 이용 약관버전" 			validator="Null"/>
+			<param name="termsAgree.piPolicyTermsVrsn" 		desc="개인정보취급방침 약관버전" 		validator="Null"/>
+			<param name="termsAgree.agreeChnl" 			desc="동의채널"	 					validator="GrpCd"/>
+			<param name="termsAgree.piUseAgreeYn"	 	desc="개인정보 수집이용동의 여부" 	validator="Yval"/>
+			<param name="termsAgree.piPolicyAgreeYn" 	desc="개인정보 취급위탁 동의 여부" 	validator="Yval"/>
+			<!-- <param name="termsAgree.optTermsAgreeYn" 	desc="선택약관 동의여부" 			validator="YnVal"	required="false" /> -->
+		</api>
+		<api url="/na/user/login/accnt" desc="로그인 인증 체크 (ID/PW)">
+			<param name="userId" 		desc="사용자ID" 	validator="Null"	type="string"	order="0"/>
+			<param name="pwd" 			desc="비밀번호" 	validator="Null"	type="string"	order="1"/>
+		</api>
+		<api url="/user/contract/list" desc="계약(보유회선) 목록 조회">
+			<param name="userId" 		desc="사용자ID" 	validator="Null"	type="string"	order="0"/>
+			<param name="credentialId" 	desc="크레덴셜ID" 	validator="Null"	type="string"	order="1"/>
+		</api>
+		<api url="/na/user/login/authreq" 	desc="로그인 인증 요청 (휴대폰 인증)">
+			<param name="authMobileNo" 		desc="인증 휴대폰 번호" 	validator="Number"/>
+		</api>
+		<api url="/na/user/line" desc="회선 선택">
+			<param name="cntrNo" desc="계약번호" validator="Null"	type="string"/>
+		</api>
+		<api url="/user/auth/sendmail" 	desc="보호자에게 인증메일 발송">
+			<param name="emailAddr" 	desc="보호자 이메질 주소" 	validator="Null"/>
+		</api>
+		<api url="/user/info" 		desc="회원정보조회">
+			<param name="mobileNo" 	desc="휴대폰 번호" 			validator="Number"	type="string"	/>
+		</api>
+		<api url="/user/setting" 	desc="APP 사용자 설정 정보 저장">
+			<param name="pushRcvYn" 					desc="푸시 수신여부" 				validator="YnVal"	required="false" />
+			<param name="mktRcvYn" 						desc="마케팅 수신여부" 				validator="YnVal"	required="false" />
+			<param name="reqRcvYn" 						desc="조르기 수신여부" 				validator="YnVal"	required="false" />
+		</api>
+		<api url="/user/terms/opt" 				desc="선택 약관 정보를 변경">
+			<param name="optTermsAgreeYn" 		desc="선택약관 동의여부" 	validator="YnVal"	type="string"	/>
+		</api>
+		<api url="/user/terms/agree" 			desc="약관 동의 정보 추가(약관변경으로 인해)">
+			<param name="piUseTermsVrsn" 		desc="개인정보 이용 약관버전" 			validator="Null"	type="string"	/>
+			<param name="piPolicyTermsVrsn" 	desc="개인정보취급방침" 				validator="Null"	type="string"	/>
+			<param name="agreeChnl" 			desc="동의채널"	 					validator="GrpCd"/>
+			<param name="piUseAgreeYn"	 		desc="개인정보 수집이용동의 여부" 	validator="Yval"/>
+			<param name="piPolicyAgreeYn" 		desc="개인정보 취급위탁 동의 여부" 	validator="Yval"/>
+			<param name="optTermsAgreeYn" 		desc="선택약관 동의여부" 			validator="YnVal"	required="false" />
+		</api>
+
+		<!-- CMS -->
+		
+		<api url="/cms/appinfo" 	desc="앱 정보 조회(버전 등)">
+			<param name="osTp" 		desc="OS 타입" 			validator="GrpCd"	type="string"/>
+		</api>
+		<api url="/cms/event/appl" 		desc="이벤트 응모">
+			<param name="evtSeq" 		desc="이벤트Seq" 	validator="Number"	type="string"/>
+		</api>
+		
+		<!-- Common -->
+		
+		<api url="/common/auth/req" 	desc="본인 인증 요청">
+			<param name="userNm" 		desc="사용자명" 	validator="Null"/>
+			<param name="birthDate" 	desc="생년월일" 	validator="Number"/>
+			<param name="genderCd" 		desc="성별코드" 	validator="Null"/>
+			<param name="foreignerCd" 	desc="외국인코드" 	validator="Null"/>
+		</api>
+		<api url="/common/auth/check" 	desc="본인 인증 확인">
+			<param name="userNm" 		desc="사용자명" 		validator="Null"/>
+			<param name="birthDate" 	desc="생년월일" 		validator="Number"/>
+			<param name="genderCd" 		desc="성별코드" 		validator="Null"/>
+			<param name="foreignerCd" 	desc="외국인코드" 		validator="Null"/>
+			<param name="randomNo" 		desc="인증 확인번호"	validator="Null"/>
+			<param name="authCd" 		desc="인증번호" 		validator="Null"/>
+		</api>
+		
+		<api url="/common/guidemsg" 	desc="안내 메시지 조회">
+			<param name="msgCd" 		desc="메시지코드" 		validator="Null"	type="string"/>
+		</api>
+		
+		<!-- GIFT -->
+		
+		<!-- VAS -->
+		
+		<api url="/vas/hist" 	desc="부가서비스 설정 이력 조회">
+			<param name="vasCd" 		desc="부가서비스 코드" 				validator="Null"	type="string"/>
+			<param name="vasItemCd" 	desc="부가서비스 상품코드" 			validator="Null"	type="string"/>
+		</api>
+		<api url="/vas/charge/later" 	desc="데이터 충전(후불)">
+			<param name="vasItemCd" 	desc="부가서비스 상품코드" 			validator="Null"	type="string"/>
+		</api>
+		<api url="/vas/charge/membership" 	desc="데이터 충전(멤버십)">
+			<param name="vasItemCd" 		desc="부가서비스 상품코드" 		validator="Null"	type="string"/>
+		</api>
+		<api url="/vas/roulette" 		desc="데이터 룰렛">
+			<param name="vasItemCd" 	desc="부가서비스 상품코드" 			validator="Null"	type="string"/>
+		</api>
+		
+		
+	</input>
+</yappValidator>

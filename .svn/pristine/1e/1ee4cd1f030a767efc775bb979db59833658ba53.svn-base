@@ -1,0 +1,22 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=EUC-KR">
+<title>Y앱 다운로드</title>
+	<script>
+	
+	</script>
+</head>
+<body>
+<div>
+	<div>
+		<div class="row">
+			<div>
+				<h5 class="">Enterprise In-House App distribution.</h6>
+				<a href="itms-services://?action=download-manifest&url=https://ybox.kt.com/yapp/KT_Y_databox_enterprise_20180109.ipa">Download Y App</a>
+			</div>
+		</div>
+	</div>
+</div>
+</body>
+</html>

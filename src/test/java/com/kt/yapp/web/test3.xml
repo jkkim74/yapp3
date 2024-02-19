@@ -1,0 +1,35 @@
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="http://bizhub.kt.com">
+    <SOAP-ENV:Header>
+        <ns1:commonHeader>
+            <appName>NBSS_ARO</appName>
+            <svcName>/BCC/PipelineSVC/NTLT/UseQnt/PL_DrctlyUseQnt</svcName>
+            <fnName>retrieveDrctlyUseQntDtl</fnName>
+            <globalNo>40a9a640ad814c43b85d56c9e8b18b4b</globalNo>
+            <chnlType>YD</chnlType>
+            <trFlag>T</trFlag>
+            <trDate>20230622</trDate>
+            <trTime>110555</trTime>
+            <clntIp>10.217.41.182</clntIp>
+            <userId>91192332</userId>
+            <orgId>SPT8050</orgId>
+            <cmpnCd>KT</cmpnCd>
+            <srcId>SRC_RETRIEVEDRCTLYUSEQNTDTL</srcId>
+            <lgDateTime>20230622110555</lgDateTime>
+        </ns1:commonHeader>
+    </SOAP-ENV:Header>
+    <SOAP-ENV:Body>
+        <retrieveDrctlyUseQntDtlRequest>
+            <bizHeader>
+                <orderId>orderId</orderId>
+                <cbSvcName>/BCC/PipelineSVC/NTLT/UseQnt/PL_DrctlyUseQnt</cbSvcName>
+                <cbFnName>retrieveDrctlyUseQntDtl</cbFnName>
+            </bizHeader>
+            <DrctlyUseQntRetvInDTO>
+                <retvStDt>20230622</retvStDt>
+                <svcContId>496999161</svcContId>
+                <sbscrNo>01064280908</sbscrNo>
+                <unitSvcGroupCd>PALV_T</unitSvcGroupCd>
+            </DrctlyUseQntRetvInDTO>
+        </retrieveDrctlyUseQntDtlRequest>
+    </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

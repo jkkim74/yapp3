@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mybatis.mapper.datuk">
+	
+	<insert id="insertDatukData" parameterType="Datuk">
+		/* mybatis.mapper.datuk.insertDatukInfo : 데이턱을 생성 정보를 추가한다.(공유일은 익일까지, 회수가능일은 다음달 말일까지) */
+		INSERT INTO TB_DATUK
+		(
+			  DATUK_ID
+			, CNTR_NO
+			, MOBILE_NO
+			, USER_NM
+			, DATUK_AMT
+			, JOIN_ED_YMD
+			, RTN_ED_YMD
+			, DATUK_YM
+			, REG_DT
+		) VALUES (
+			  #{datukId}
+			, #{cntrNo}
+			, #{mobileNo}
+			, #{userNm}
+			, #{datukAmt}
+			, TO_CHAR(now() + '1 day', 'YYYYMMDD')
+			, TO_CHAR(DATE_TRUNC('month', now() + '2 month') + '-1 day', 'YYYYMMDD')
+			, TO_CHAR(now(), 'YYYYMM')
+			, now()
+		)
+	</insert>
+	
+	<select id="getDatukDataInfo" resultType="Datuk">
+		/* mybatis.mapper.datuk.getDatukDataInfo : 데이턱 데이터 정보를 조회한다.*/
+		SELECT
+			  DATUK_ID
+			, CNTR_NO
+			, MOBILE_NO
+			, USER_NM
+			, DATUK_AMT
+			, JOIN_ED_YMD
+			, RTN_ED_YMD
+			, REG_DT
+		FROM
+			TB_DATUK
+		WHERE
+			DATUK_ID		= #{datukId}
+	</select>
+
+	<select id="getDatukInfoList" resultType="Datuk">
+		/* mybatis.mapper.datuk.getDatukInfoList : 데이턱 데이터 정보를 조회한다.*/
+		SELECT
+			  DATUK_ID
+			, CNTR_NO
+			, MOBILE_NO
+			, USER_NM
+			, DATUK_AMT
+			, JOIN_ED_YMD
+			, RTN_ED_YMD
+			, REG_DT
+		FROM
+			TB_DATUK
+		WHERE
+				CNTR_NO		= #{cntrNo}
+				AND	AND DATUK_YM		= #{datukYm}
+		ORDER BY REG_DT DESC
+	</select>
+<!-- 	<select id="getDatukDataList" resultType="Datuk"> -->
+<!-- 		/* mybatis.mapper.datuk.getDatukDataList : 데이턱 데이터 목록을 조회한다.*/ -->
+<!-- 		SELECT -->
+<!-- 			  DATUK_ID -->
+<!-- 			, CNTR_NO -->
+<!-- 			, MOBILE_NO -->
+<!-- 			, USER_NM -->
+<!-- 			, DATUK_AMT -->
+<!-- 			, JOIN_ED_YMD -->
+<!-- 			, RTN_ED_YMD -->
+<!-- 			, REG_DT -->
+<!-- 		FROM -->
+<!-- 			TB_DATUK -->
+<!-- 		<where> -->
+<!-- 			<if test='datukId != null and datukId != ""'> -->
+<!-- 				AND DATUK_ID		= #{datukId} -->
+<!-- 			</if> -->
+<!-- 			<if test='cntrNo != null and cntrNo != ""'> -->
+<!-- 				AND CNTR_NO			= #{cntrNo} -->
+<!-- 			</if> -->
+<!-- 			<if test='isAbleJoin == "Y"'> -->
+<!-- 				AND JOIN_ED_YMD		>= TO_CHAR(now(), 'YYYYMMDD') -->
+<!-- 			</if> -->
+<!-- 			<if test='datukYm != null and datukYm != ""'> -->
+<!-- 				AND DATUK_YM		= #{datukYm} -->
+<!-- 			</if> -->
+<!-- 		</where> -->
+<!-- 	</select> -->
+
+	<select id="getShareDatukData" resultType="Datuk">
+		/* mybatis.mapper.datuk.getShareDatukData : 공유중인 데이턱을 조회한다.*/
+		WITH WT_DATUK AS
+		(
+			SELECT
+				  A.DATUK_ID
+				, A.CNTR_NO
+				, A.MOBILE_NO
+				, A.USER_NM
+				, A.DATUK_AMT
+				, A.JOIN_ED_YMD
+				, A.RTN_ED_YMD
+				, A.REG_DT
+			FROM
+				TB_DATUK	A
+			WHERE
+					A.CNTR_NO			= #{cntrNo}
+				AND A.DATUK_YM			= TO_CHAR(now(), 'YYYYMM')
+				AND A.JOIN_ED_YMD		>= TO_CHAR(now(), 'YYYYMMDD')
+		)
+		, WT_DATUK_RTN AS 
+		(
+			SELECT
+				  A.DATUK_ID
+				, SUM(A.RCV_AMT)	RCV_AMT
+			FROM
+				TB_DATUK_RCV	A
+			JOIN
+				WT_DATUK		B
+					ON	A.DATUK_ID	= B.DATUK_ID
+			GROUP BY 
+				A.DATUK_ID
+		)
+		SELECT
+			A.*
+			,COALESCE(C.RCV_AMT, 0) as RCV_AMT
+		FROM
+			WT_DATUK		A
+		LEFT JOIN
+			TB_DATUK_RTN	B
+				ON	A.DATUK_ID	= B.DATUK_ID
+		LEFT JOIN
+			WT_DATUK_RTN	C
+				ON	A.DATUK_ID	= C.DATUK_ID
+		WHERE
+				B.DATUK_ID IS NULL
+			AND A.DATUK_AMT > COALESCE(C.RCV_AMT, 0)
+		LIMIT 1
+	</select>
+
+	<select id="getDatukRtnDataList" resultType="Datuk">
+		/* mybatis.mapper.datuk.getDatukRtnDataList : 회수대상 데이턱 데이터 목록을 조회한다.*/
+		WITH WT_DATUK AS
+		(
+			SELECT
+				  A.DATUK_ID
+				, A.CNTR_NO
+				, A.MOBILE_NO
+				, A.USER_NM
+				, A.DATUK_AMT
+				, A.JOIN_ED_YMD
+				, A.RTN_ED_YMD
+				, A.REG_DT
+			FROM
+				TB_DATUK	A
+			WHERE
+					A.CNTR_NO		= #{cntrNo}
+				AND A.JOIN_ED_YMD	<![CDATA[ < ]]>  TO_CHAR(now(), 'YYYYMMDD')
+				AND A.RTN_ED_YMD	>= TO_CHAR(now(), 'YYYYMMDD')
+		)
+		, WT_DATUK_RTN AS 
+		(
+			SELECT
+				  A.DATUK_ID
+				, SUM(A.RCV_AMT)	RCV_AMT
+			FROM
+				TB_DATUK_RCV	A
+			JOIN
+				WT_DATUK		B
+					ON	A.DATUK_ID	= B.DATUK_ID
+			GROUP BY 
+				A.DATUK_ID
+		)
+		SELECT
+			  A.*
+			, A.DATUK_AMT - COALESCE(C.RCV_AMT, 0)	AS RTN_AMT
+		FROM
+			WT_DATUK		A
+		LEFT JOIN
+			TB_DATUK_RTN	B
+				ON	A.DATUK_ID	= B.DATUK_ID
+		LEFT JOIN
+			WT_DATUK_RTN	C
+				ON	A.DATUK_ID	= C.DATUK_ID
+		WHERE
+				B.DATUK_ID IS NULL
+			AND A.DATUK_AMT > COALESCE(C.RCV_AMT, 0)
+<!-- 		SELECT -->
+<!-- 			  A.DATUK_ID -->
+<!-- 			, A.CNTR_NO -->
+<!-- 			, A.MOBILE_NO -->
+<!-- 			, A.USER_NM -->
+<!-- 			, A.DATUK_AMT -->
+<!-- 			, A.JOIN_ED_YMD -->
+<!-- 			, A.RTN_ED_YMD -->
+<!-- 			, A.REG_DT -->
+<!-- 			, A.DATUK_AMT - COALESCE((SELECT SUM(RCV_AMT) FROM TB_DATUK_RCV WHERE DATUK_ID = A.DATUK_ID), 0)	AS RTN_AMT -->
+<!-- 		FROM -->
+<!-- 			TB_DATUK A LEFT JOIN TB_DATUK_RTN B -->
+<!-- 				ON		A.DATUK_ID	= B.DATUK_ID -->
+<!-- 		<where> -->
+<!-- 			<if test='datukId != null and datukId != ""'> -->
+<!-- 				A.DATUK_ID		= #{datukId} -->
+<!-- 			</if> -->
+<!-- 			AND A.CNTR_NO		= #{cntrNo} -->
+<!-- 			AND A.JOIN_ED_YMD	<![CDATA[ < ]]>  TO_CHAR(now(), 'YYYYMMDD') -->
+<!-- 			AND A.RTN_ED_YMD	>= TO_CHAR(now(), 'YYYYMMDD') -->
+<!-- 			AND B.DATUK_ID		IS NULL -->
+<!-- 		</where> -->
+	</select>
+
+	<insert id="returnDatukData" parameterType="Datuk">
+		/* mybatis.mapper.datuk.returnDatukData : 데이턱 데이터를 회수 처리한다. */
+		INSERT INTO TB_DATUK_RTN
+		(
+			  DATUK_ID
+			, RTN_AMT
+			, REG_DT
+		) VALUES (
+			  #{datukId}
+			, #{rtnAmt}
+			, now()
+		)
+	</insert>
+	
+	<select id="getDatukRcvDataList" resultType="DatukRcv">
+		/* mybatis.mapper.datuk.getDatukRcvDataList : 데이턱 수령 목록을 조회한다.*/
+		SELECT
+			  DATUK_ID
+			, DATUK_RCV_NO
+			, RCV_CNTR_NO
+			, RCV_MOBILE_NO
+			, RCV_AMT
+			, RCV_DATUK_YM
+			, REG_DT
+		FROM
+			TB_DATUK_RCV
+		WHERE
+				DATUK_ID		= #{datukId}
+			AND	RCV_CNTR_NO		= #{cntrNo}
+			AND RCV_DATUK_YM	= TO_CHAR(now(), 'YYYYMM')
+	</select>
+
+	<select id="getNextDatukRcvNo" resultType="int">
+		/* mybatis.mapper.datuk.getNextDatukRcvNo : 데이턱 수령번호를 조회한다. */
+		WITH WT_DATUK_SIZE AS
+		(
+			SELECT 
+				  DATUK_AMT / 100		AS RCV_SIZE
+			FROM 
+				TB_DATUK
+			WHERE
+				DATUK_ID	= #{datukId}
+		), WT_MAX_RCV_NO AS
+		(
+			SELECT 
+				  COALESCE(MAX(DATUK_RCV_NO), 0) + 1		AS MAX_RCV_NO
+				, (SELECT RCV_SIZE FROM WT_DATUK_SIZE)		AS RCV_SIZE
+			FROM 
+				TB_DATUK_RCV A
+			WHERE
+				A.DATUK_ID		= #{datukId}
+		)
+		SELECT
+			CASE WHEN MAX_RCV_NO > COALESCE(RCV_SIZE, 0) THEN -1 ELSE MAX_RCV_NO END	AS MAX_RCV_NO
+		FROM
+			WT_MAX_RCV_NO A
+	</select>
+
+	<insert id="insertDatukRcvData" parameterType="DatukRcv">
+		/* mybatis.mapper.datuk.insertDatukRcvData : 데이턱 수령 정보를 추가한다. */
+		INSERT INTO TB_DATUK_RCV
+		(
+			DATUK_ID
+			, DATUK_RCV_NO
+			, RCV_CNTR_NO
+			, RCV_MOBILE_NO
+			, RCV_AMT
+			, RCV_DATUK_YM
+			, REG_DT
+		) VALUES (
+			#{datukId}
+			, #{datukRcvNo}
+			, #{rcvCntrNo}
+			, #{rcvMobileNo}
+			, #{rcvAmt}
+			, TO_CHAR(now(), 'YYYYMM')
+			, now()
+		)
+	</insert>
+	<select id="getDatukInfo" resultType="DatukDtl">
+	/* mybatis.mapper.datuk.getDatukInfo : 데이턱 정보를 조회한다. */
+		SELECT 
+			A.CNTR_NO
+			,A.DATUK_ID
+			,B.DBOX_ID	
+		FROM 
+			TB_DATUK A
+		JOIN 
+			TB_USER B
+			ON A.CNTR_NO = B.CNTR_NO
+		WHERE A.CNTR_NO = #{cntrNo}
+		AND DATUK_ID = #{datukId}
+	</select>
+</mapper>

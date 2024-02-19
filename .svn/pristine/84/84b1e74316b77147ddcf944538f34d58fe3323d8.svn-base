@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+ * attendMapper.xml
+ * 
+ * @author kkb
+ * @since 2020. 8. 21.
+ * @version 1.0
+ * 
+ * Modification Information
+ * Mod Date		Modifier		Description
+ * ========================================
+ * Copyright (c) 2018 KTDS, Inc. All Rights Reserved
+ -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mybatis.mapper.vote">
+
+	<select id="getVoteType" parameterType="EventMaster" resultType="String">
+		/* mybatis.mapper.vote.getVoteType : 220926 투표 타입을 가져온다. */
+		SELECT		VOTE_TYPE
+		FROM		TB_VOTE_INFO
+		WHERE		EVT_SEQ = #{evtSeq}
+	</select>
+	
+	<select id="getVoteRateYn" parameterType="EventMaster" resultType="String">
+		/* mybatis.mapper.vote.getVoteRateYn : 230106 투표율 표시여부를 가져온다. */
+		SELECT		VOTE_RATE_YN
+		FROM		TB_VOTE_INFO
+		WHERE		EVT_SEQ = #{evtSeq}
+	</select>
+	
+	<select id="getVoteItemList" resultType="VoteItem">
+		/* mybatis.mapper.vote.getVoteItemList : 210610 투표대상 리스트 조회 210628 vote_item_cnt 추가 */
+		SELECT		VOTE_ITEM_SEQ
+				,	VOTE_SEQ
+				,	ITEM_TEXT
+				,	ITEM_IMAGE
+				,	VOTE_ITEM_CNT
+				,	REG_DT
+				,	MOD_DT
+		FROM	TB_VOTE_ITEM
+		WHERE	VOTE_SEQ = #{voteSeq}
+		ORDER BY VOTE_ITEM_CNT DESC, VOTE_ITEM_SEQ ASC 
+	</select>
+	<update id="updateVoteCnt" parameterType="VoteHistory">
+		/* mybatis.mapper.vote.updateVoteCnt : 210628  투표대상 건수를 업데이트한다. */
+		UPDATE	
+			TB_VOTE_ITEM	
+		SET
+			VOTE_ITEM_CNT	=	VOTE_ITEM_CNT + 1
+		WHERE	VOTE_ITEM_SEQ = #{voteItemSeq}
+	</update>	
+</mapper>

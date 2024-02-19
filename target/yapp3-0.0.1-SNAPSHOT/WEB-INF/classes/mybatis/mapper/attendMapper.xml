@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+ * attendMapper.xml
+ * 
+ * @author kkb
+ * @since 2020. 8. 21.
+ * @version 1.0
+ * 
+ * Modification Information
+ * Mod Date		Modifier		Description
+ * ========================================
+ * Copyright (c) 2018 KTDS, Inc. All Rights Reserved
+ -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mybatis.mapper.attend">
+	<!-- 메인화면 출석 정보 조회 -->
+	<select id="getAttend" resultType="Attend">
+		/* mybatis.mapper.attend.getAttend : 출석정보조회 */
+		SELECT 
+			COUNT(A.*) AS CUR_DAY
+			, COALESCE(MAX(CHECK_DAY), 0) MAX_DAY
+		  FROM TB_EVENT_MASTER A
+		 INNER JOIN TB_ATTEND_DAY_CHECK B ON A.EVT_SEQ = B.EVT_SEQ AND B.CNTR_NO = #{cntrNo}
+		 WHERE TO_CHAR(now(), 'YYYYMMDDHH24MI') BETWEEN A.EVT_START_DT AND A.EVT_END_DT
+		   AND (A.EVT_TYPE = 'G0005' OR A.EVT_TYPE = 'G0010')
+		   AND A.EVT_SEQ = #{evtSeq}
+		   AND A.USE_YN = 'Y'
+		   AND A.EVT_TEST_YN <![CDATA[ <> ]]> 'Y'
+	</select>
+	
+	<select id="getAttendEvtSeq" resultType="int">
+		/* mybatis.mapper.attend.getAttendEvtSeq : 출석정보 이벤트 조회 */
+		SELECT 
+			COALESCE(MAX(A.EVT_SEQ), 0) AS EVT_SEQ
+		  FROM TB_EVENT_MASTER A
+		 WHERE TO_CHAR(now(), 'YYYYMMDDHH24MI') BETWEEN A.EVT_START_DT AND A.EVT_END_DT
+		   AND (A.EVT_TYPE = 'G0005' OR A.EVT_TYPE = 'G0010')
+		   AND A.USE_YN = 'Y'
+		   AND A.EVT_TEST_YN <![CDATA[ <> ]]> 'Y'
+	</select>
+	
+	<select id="getAttendNowChk" resultType="int">
+		/* mybatis.mapper.attend.getAttendNowChk : 당일 출석정보 체크 */
+		SELECT 
+			COUNT(A.*) AS CNT
+		  FROM TB_EVENT_MASTER A
+		 INNER JOIN TB_ATTEND_DAY_CHECK B ON A.EVT_SEQ = B.EVT_SEQ AND B.CNTR_NO = #{cntrNo} AND TO_CHAR(now(), 'YYYYMMDD') = TO_CHAR(B.REG_DT, 'YYYYMMDD')
+		 WHERE (A.EVT_TYPE = 'G0005' OR A.EVT_TYPE = 'G0010')
+		   AND A.EVT_SEQ = #{evtSeq}
+ 		   AND A.USE_YN = 'Y'
+		   AND A.EVT_TEST_YN <![CDATA[ <> ]]> 'Y'
+	</select>
+</mapper>

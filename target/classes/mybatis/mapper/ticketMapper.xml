@@ -1,0 +1,395 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mybatis.mapper.ticket">
+	<insert id="insertEventTicket" parameterType="EventGiftJoin">
+		/* mybatis.mapper.ticket.insertEventTicket 사용자의 응모권 발급 정보를 등록한다. */
+		INSERT INTO TB_TICKET_REWARD_INFO (
+				EVT_SEQ
+			,	ISSUE_SEQ
+				<if test='cntrNo != null and cntrNo != ""'>
+			, 	CNTR_NO
+				</if>
+				<if test='userId != null and userId != ""'>
+			, 	USER_ID
+				</if>
+			,	VALID_START_DT
+			,	VALID_END_DT
+			,	REG_DT
+		)VALUES(
+				#{evtSeq}
+			,	#{issueSeq}
+				<if test='cntrNo != null and cntrNo != ""'>
+			, 	#{cntrNo}
+				</if>
+				<if test='userId != null and userId != ""'>
+			, 	#{userId}
+				</if>
+			,	TO_CHAR(CURRENT_DATE, 'YYYYMMDD0000')
+			,	TO_CHAR(DATE_TRUNC('MONTH', CURRENT_DATE + INTERVAL '2 MONTHS')::DATE-1, 'YYYYMMDD0000')
+			,	NOW()
+		)
+	</insert>
+	
+	<select id="getTicketGiftIssueCnt" resultType="Integer">
+		/* mybatis.mapper.ticket.getTicketGiftIssueCnt : 응모권상품발행건수 조회 */
+		SELECT SUM(B.ISSUE_CNT) AS ISSUE_CNT
+		FROM TB_TICKET_GIFT_INFO A
+		INNER JOIN TB_TICKET_GIFT_ISSUE_INFO B ON B.TICKET_GIFT_SEQ = A.TICKET_GIFT_SEQ
+		WHERE A.ROUND = #{round}
+	</select>
+	
+	<select id="getTicketGiftBlankCnt" resultType="Integer">
+		/* mybatis.mapper.ticket.getTicketGiftBlankCnt : 응모권꽝발행건수 조회 */
+		SELECT COUNT(*) AS blankCnt
+		FROM TB_TICKET_GIFT_REWARD_INFO
+		WHERE ROUND = #{round}
+		AND	TICKET_GIFT_SEQ = 0
+	</select>	
+	
+	<select id="getTicketWinNum" resultType="Integer">
+		/* mybatis.mapper.ticket.getTicketWinNum : 응모권상품발행건수 조회 */
+		SELECT COUNT(GIFT_ISSUE_SEQ) + 1 AS winNum
+		FROM TB_TICKET_GIFT_REWARD_INFO
+		WHERE ROUND = #{round}
+		AND ISSUE_YN = 'Y'
+	</select>
+	
+	<select id="getTicketGiftRewardDetail" resultType="TicketGiftRewardData">
+		/* mybatis.mapper.ticket.getTicketGiftRewardDetail : 응모권당첨상품정보 조회*/
+		SELECT		GIFT_ISSUE_SEQ
+				,	TICKET_GIFT_SEQ
+				,	ROUND
+				,	WIN_NUM
+				,	ISSUE_YN
+				,	CNTR_NO
+				,	ETC
+				,	RECV_NAME
+				,	RECV_MOBILE_NO
+				,	RECV_POST
+				,	RECV_ADDR
+				,	RECV_ADDR_DETAIL
+				,	TO_CHAR(REG_DT, 'YYYY.MM.DD') AS REG_DT
+				,	TO_CHAR(MOD_DT, 'YYYY.MM.DD') AS MOD_DT
+		FROM TB_TICKET_GIFT_REWARD_INFO
+		WHERE	ROUND		=	#{round}
+		AND		WIN_NUM		=	#{winNum}
+	</select>
+	
+	<select id="getTicketGiftTotal" resultType="TicketGiftRewardData">
+		/* mybatis.mapper.ticket.getTicketGiftTotal 상품소진여부 조회. */
+		SELECT		A.GIFT_CODE
+				,	B.GIFT_CNT - B.ISSUE_CNT AS TOTAL_CNT
+		FROM TB_TICKET_GIFT_INFO A 
+		INNER JOIN TB_TICKET_GIFT_ISSUE_INFO B ON B.TICKET_GIFT_SEQ = A.TICKET_GIFT_SEQ
+		WHERE	A.ROUND = #{round}
+		AND A.USE_YN		=	'Y'
+		AND A.EVT_SEQ IS NOT NULL
+	</select>
+	
+	<select id="getTicketGiftCouponInfo" resultType="TicketGiftRewardData">
+		/* mybatis.mapper.ticket.getTicketGiftCouponInfo 미발행 쿠폰정보 조회. */
+		SELECT		GIFT_CODE
+				,	ROUND
+				,	COUPON_TYPE
+				,	COUPON_NO
+				,	ISSUE_YN
+				,	REG_DT
+		FROM	TB_GIFT_COUPON_INFO
+		WHERE	ISSUE_YN = 'N'
+		AND		ROUND		=	#{round}
+		AND		GIFT_CODE	=	#{giftCode}
+		ORDER BY REG_DT
+		LIMIT 1
+	</select>
+	
+	<insert id="insertTicketGiftRewardInfo" parameterType="TicketGiftRewardData">
+		/* mybatis.mapper.ticket.insertTicketGiftRewardInfo 응모권당첨상품리워드테이블 등록. */
+		INSERT INTO	TB_TICKET_GIFT_REWARD_INFO(
+				ROUND
+			,	WIN_NUM
+			,	TICKET_GIFT_SEQ
+			,	REG_DT
+		)VALUES(
+				#{round}
+			,	#{winNum}
+			,	-1
+			,	now()
+		)
+	</insert>
+	
+	<update id="updateTicketGiftRewardInfo" parameterType="TicketGiftRewardData">
+		/* mybatis.mapper.ticket.updateTicketGiftRewardInfo 응모권당첨상품리워드테이블 상품발행 UPDATE. */
+		UPDATE TB_TICKET_GIFT_REWARD_INFO SET
+				CNTR_NO					=	#{cntrNo}
+			,	ISSUE_YN				= 	#{issueYn}
+			<if test="ticketGiftSeq != null and ticketGiftSeq != 0">
+			,	TICKET_GIFT_SEQ			=	#{ticketGiftSeq}
+			</if>
+			<if test="giftCode != null">
+				<if test='giftCode.equals("GC006")'>
+					,	TICKET_GIFT_SEQ			=	0
+				</if>
+				<if test='giftCode.equals("GC005")'>
+					,	DATA_GIVE_YN			=	#{dataGiveYn}
+				</if>
+			</if>
+			<if test="couponNo != null">
+				,	ETC					=	#{couponNo}
+			</if>
+			,	MOD_DT					=	now()
+		WHERE	ROUND			= #{round}
+		AND		WIN_NUM			= #{winNum}
+		AND		GIFT_ISSUE_SEQ	= #{giftIssueSeq}
+		AND		(ISSUE_YN NOT IN('Y') OR ISSUE_YN IS NULL)
+	</update>
+	
+	<select id="getTicketGiftIssueInfo" resultType="TicketGiftIssueInfoData">
+		/* mybatis.mapper.ticket.getTicketGiftIssueInfo 응모권발행상품정보 조회. */
+		SELECT		TICKET_GIFT_SEQ
+				,	ROUND
+				,	GIFT_NAME
+				,	GIFT_TYPE
+				,	GIFT_CODE
+				,	GIFT_INTRO
+				,	GIFT_MANUAL
+				,	GIFT_NOTICE
+				,	GIFT_IMG_URL
+				,	LAND_URL_TYPE
+				,	LAND_URL
+				,	SUBSTR(VALID_START_DT,0,5)||'.'||SUBSTR(VALID_START_DT,5,2)||'.'||SUBSTR(VALID_START_DT,7,2) AS VALID_START_DT
+	    	 	,	SUBSTR(VALID_END_DT,0,5)||'.'||SUBSTR(VALID_END_DT,5,2)||'.'||SUBSTR(VALID_END_DT,7,2) AS VALID_END_DT
+	    	 	,	REG_DT
+		FROM	TB_TICKET_GIFT_INFO
+		WHERE	USE_YN		=	'Y'
+		AND		EVT_SEQ IS NOT NULL
+		<if test="ticketGiftSeq ==0">
+			AND		ROUND		=	#{round}
+			AND		GIFT_CODE	=	#{giftCode}
+		</if>
+		<if test="ticketGiftSeq !=0">
+			AND		TICKET_GIFT_SEQ	=	#{ticketGiftSeq}
+		</if>
+	</select>
+	
+	<update id="updateGiftCouponIssueInfo" parameterType="TicketGiftRewardData">
+		/* mybatis.mapper.ticket.updateGiftCouponIssueInfo : 210826 응모권 리워드 쿠폰 발행 정보를 업데이트한다. */
+		UPDATE TB_GIFT_COUPON_INFO SET
+			ISSUE_YN	=	'Y'
+		,	MOD_DT		=	now()
+		WHERE	ROUND		= #{round}
+		AND		COUPON_NO	= #{couponNo}
+		AND		(ISSUE_YN NOT IN('Y') OR ISSUE_YN IS NULL)
+	</update>
+	
+	<update id="updateTicketReward" parameterType="TicketGiftRewardData">
+		/* mybatis.mapper.ticket.updateTicketReward : 210831 응모권 리워드 정보를 업데이트한다. */
+		UPDATE TB_TICKET_REWARD_INFO SET
+			GIFT_ISSUE_SEQ	=	#{giftIssueSeq}
+		,	WIN_YN			=	#{winYn}
+		,	MOD_DT		=	now()
+		WHERE	TICKET_SEQ	= #{ticketSeq}
+	</update>
+	
+	<update id="updateTicketGiftIssueInfo" parameterType="TicketGiftRewardData">
+		/* mybatis.mapper.ticket.updateTicketGiftIssueInfo : 210901 응모권상품발행정보를 업데이트한다. */
+		UPDATE TB_TICKET_GIFT_ISSUE_INFO SET
+			ISSUE_CNT	=	ISSUE_CNT + 1
+		,	MOD_DT		=	now()
+		WHERE	TICKET_GIFT_SEQ	= #{ticketGiftSeq}
+		AND		GIFT_CNT > ISSUE_CNT
+	</update>
+	
+	<select id="getTicketRewardInfo" resultType="TicketRewardData">
+		/* mybatis.mapper.ticket.getTicketRewardInfo : 210902 응모권리워드정보를 조회한다. */
+		SELECT		GIFT_ISSUE_SEQ
+				,	EVT_SEQ
+				,	ISSUE_SEQ
+				,	CNTR_NO
+				,	VALID_START_DT
+				,	VALID_END_DT
+				,	WIN_YN
+				,	TO_CHAR(REG_DT, 'YYYY.MM.DD') AS REG_DT
+				,	TO_CHAR(MOD_DT, 'YYYY.MM.DD') AS MOD_DT				
+		FROM TB_TICKET_REWARD_INFO
+		WHERE TICKET_SEQ = #{ticketSeq}
+	</select>
+	
+	<update id="updateTicketGiftDataGiveInfo" parameterType="TicketGiftRewardData">
+		/* mybatis.mapper.ticket.updateTicketGiftDataGiveInfo 응모권당첨상품리워드테이블 데이터지급여부 UPDATE. */
+		UPDATE TB_TICKET_GIFT_REWARD_INFO SET
+				DATA_GIVE_YN			= 	#{dataGiveYn}
+			,	DATA_GIVE_DT			=	TO_CHAR(CURRENT_DATE, 'YYYYMMDD0000')
+			,	MOD_DT					=	now()
+		WHERE	GIFT_ISSUE_SEQ	= #{giftIssueSeq}
+		AND		DATA_GIVE_YN != 'Y'
+	</update>
+	
+	<select id="getTicketGiftRewardIssueDetail" resultType="TicketGiftRewardData">
+		/* mybatis.mapper.ticket.getTicketGiftRewardIssueDetail 응모권당첨상품리워드테이블 정보조회 giftIssueSeq . */
+		SELECT		A.GIFT_ISSUE_SEQ
+				,	A.TICKET_GIFT_SEQ
+				,	A.ROUND
+				,	A.WIN_NUM
+				,	A.ISSUE_YN
+				,	A.CNTR_NO
+				,	A.USER_ID
+				,	A.ETC AS couponNo
+				,   A.CUPN_PW
+				,   A.PW_YN
+				,	A.RECV_NAME
+				,	A.RECV_MOBILE_NO
+				,	A.RECV_POST
+				,	A.RECV_ADDR
+				,	A.RECV_ADDR_DETAIL
+				,	A.REG_DT
+				, 	A.DATA_GIVE_YN
+				,	SUBSTR(A.DATA_GIVE_DT,0,5)||'.'||SUBSTR(A.DATA_GIVE_DT,5,2)||'.'||SUBSTR(A.DATA_GIVE_DT,7,2) AS DATA_VALID_START_DT
+                ,	SUBSTR(TO_CHAR(date_trunc('month',to_date(A.DATA_GIVE_DT, 'YYYYMMDDHH24MI')+interval '2 month') -interval '1 day', 'YYYYMMDDHH24MI'),0,5)||'.'||SUBSTR(TO_CHAR(date_trunc('month',to_date(A.DATA_GIVE_DT, 'YYYYMMDDHH24MI')+interval '2 month') -interval '1 day', 'YYYYMMDDHH24MI'),5,2)||'.'||SUBSTR(TO_CHAR(date_trunc('month',to_date(A.DATA_GIVE_DT, 'YYYYMMDDHH24MI')+interval '2 month') -interval '1 day', 'YYYYMMDDHH24MI'),7,2) AS DATA_VALID_END_DT
+				,	SUBSTR(B.VALID_START_DT,0,5)||'.'||SUBSTR(B.VALID_START_DT,5,2)||'.'||SUBSTR(B.VALID_START_DT,7,2) AS VALID_START_DT
+	    	 	,	SUBSTR(B.VALID_END_DT,0,5)||'.'||SUBSTR(B.VALID_END_DT,5,2)||'.'||SUBSTR(B.VALID_END_DT,7,2) AS VALID_END_DT	    	 	
+	    	 	,	B.GIFT_IMG_URL
+	    	 	,	B.GIFT_NAME
+	    	 	,	B.GIFT_INTRO
+	    	 	,	B.GIFT_MANUAL
+	    	 	,	B.GIFT_NOTICE
+	    	 	,	B.LAND_URL
+	    	 	,	B.LAND_URL_TYPE
+	    	 	,	B.GIFT_TYPE
+		FROM TB_TICKET_GIFT_REWARD_INFO A
+		INNER JOIN TB_TICKET_GIFT_INFO B ON A.TICKET_GIFT_SEQ = B.TICKET_GIFT_SEQ
+		WHERE	A.GIFT_ISSUE_SEQ	=	#{giftIssueSeq}
+	</select>
+	
+	<update id="updateTicketGiftRewardAddressInfo" parameterType="TicketGiftRewardData">
+		/* mybatis.mapper.ticket.updateTicketGiftRewardAddressInfo 응모권당첨상품리워드테이블 주소정보 UPDATE. */
+		UPDATE TB_TICKET_GIFT_REWARD_INFO SET
+				RECV_NAME				= 	#{recvName}
+			,	RECV_MOBILE_NO			=	#{recvMobileNo}
+			,	RECV_POST				=	#{recvPost}
+			,	RECV_ADDR				=	#{recvAddr}
+			,	RECV_ADDR_DETAIL		=	#{recvAddrDetail}
+			,	MOD_DT					=	now()
+		WHERE	GIFT_ISSUE_SEQ			=	#{giftIssueSeq}
+		AND		ISSUE_YN				=	'Y'
+	</update>
+	
+	<select id="upsertTicketWinNum" parameterType="TicketGiftRewardData" resultType="TicketGiftRewardData">
+		WITH GET_WIN_NUM AS(
+			SELECT COALESCE(MAX(WIN_NUM),0)+1 FROM TB_TICKET_GIFT_REWARD_INFO WHERE ROUND = #{round} AND ISSUE_YN = 'Y'
+		),
+		UPDATE_TICKET_WIN_NUM AS(
+			UPDATE	TB_TICKET_GIFT_REWARD_INFO SET
+				    ISSUE_YN				=	'Y'
+				<if test='cntrNo != null and cntrNo != ""'>
+				, 	CNTR_NO = #{cntrNo}
+				</if>
+				<if test='userId != null and userId != ""'>
+				, 	USER_ID = #{userId}
+				</if>
+				,	MOD_DT					=	now()
+			WHERE	ROUND					=	#{round}
+			AND		WIN_NUM					=	(SELECT * FROM GET_WIN_NUM)
+			AND		(ISSUE_YN NOT IN('Y') OR ISSUE_YN IS NULL)
+			RETURNING *
+		), 
+		INSERT_TICKET_WIN_NUM AS(
+			INSERT INTO TB_TICKET_GIFT_REWARD_INFO(
+					ROUND
+				<if test='cntrNo != null and cntrNo != ""'>
+				, 	CNTR_NO
+				</if>
+				<if test='userId != null and userId != ""'>
+				, 	USER_ID
+				</if>
+				,	WIN_NUM
+				,	ISSUE_YN
+				,	TICKET_GIFT_SEQ
+				,	REG_DT
+			)
+			SELECT		
+						#{round}
+					<if test='cntrNo != null and cntrNo != ""'>
+					, 	#{cntrNo}
+					</if>
+					<if test='userId != null and userId != ""'>
+					, 	#{userId}
+					</if>
+					,	(SELECT * FROM GET_WIN_NUM)
+					,	'Y'
+					,	-1
+					,	now()
+			WHERE	NOT	EXISTS(SELECT * FROM UPDATE_TICKET_WIN_NUM)
+	 		RETURNING *
+ 		),
+ 		UNION_UPSERT AS(
+ 			SELECT * FROM UPDATE_TICKET_WIN_NUM
+ 			UNION ALL
+ 			SELECT * FROM INSERT_TICKET_WIN_NUM 
+ 		)
+ 		SELECT * FROM UNION_UPSERT
+	</select>
+	
+	<select id="getGiftCodeType" parameterType="Integer" resultType="TicketGiftIssueInfoData">
+		/* mybatis.mapper.ticket.getGiftCodeType : 응모권당첨상품정보 조회*/
+		SELECT		TICKET_GIFT_SEQ
+				,	ROUND
+				,	GIFT_NAME
+				,	GIFT_TYPE
+				,	GIFT_CODE
+				,	GIFT_INTRO
+				,	GIFT_MANUAL
+				,	GIFT_NOTICE
+				,	GIFT_IMG_URL
+				,	LAND_URL_TYPE
+				,	LAND_URL
+				,	SUBSTR(VALID_START_DT,0,5)||'.'||SUBSTR(VALID_START_DT,5,2)||'.'||SUBSTR(VALID_START_DT,7,2) AS VALID_START_DT
+	    	 	,	SUBSTR(VALID_END_DT,0,5)||'.'||SUBSTR(VALID_END_DT,5,2)||'.'||SUBSTR(VALID_END_DT,7,2) AS VALID_END_DT
+	    	 	,	REG_DT
+		FROM TB_TICKET_GIFT_INFO
+		WHERE	USE_YN		=	'Y'
+		AND		EVT_SEQ IS NOT NULL
+		AND		TICKET_GIFT_SEQ	=	#{ticketGiftSeq}
+	</select>
+ 	
+	<select id="getCouponNo" parameterType="TicketGiftRewardData" resultType="TicketGiftRewardData">
+		/* mybatis.mapper.ticket.getCouponNo 쿠폰번호 update/get */
+		UPDATE	TB_GIFT_COUPON_INFO SET
+			ISSUE_YN	= 'Y'
+		,	MOD_DT	= now()
+		WHERE	COUPON_GIFT_SEQ	= (SELECT COUPON_GIFT_SEQ FROM TB_GIFT_COUPON_INFO WHERE ISSUE_YN = 'N' AND ROUND = #{round} AND GIFT_CODE = #{giftCode} LIMIT 1)
+		AND		ISSUE_YN = 'N'
+		RETURNING COUPON_NO, COUPON_TYPE
+	</select>
+	
+	<update id="updateTicketGiftRewardAll" parameterType="TicketGiftRewardData">
+		/* mybatis.mapper.ticket.updateTicketGiftRewardInfo 응모권당첨상품리워드테이블 상품발행 UPDATE. */
+		UPDATE TB_TICKET_GIFT_REWARD_INFO SET
+				MOD_DT					=	now()
+			<if test="giftCode != null">
+				<if test='giftCode.equals("GC004")'>
+				,	TICKET_GIFT_SEQ			=	#{ticketGiftSeq}
+				</if>
+				<if test='giftCode.equals("GC005")'>
+					,	TICKET_GIFT_SEQ			=	#{ticketGiftSeq}
+					,	DATA_GIVE_YN			=	#{dataGiveYn}
+				</if>
+				<if test='giftCode.equals("GC006")'>
+					,	TICKET_GIFT_SEQ			=	0
+				</if>
+			</if>
+			<if test="couponNo != null">
+				,	ETC					=	#{couponNo}
+			</if>
+		WHERE	GIFT_ISSUE_SEQ	= #{giftIssueSeq}
+	</update>
+	
+	<select id="getSoldOutYn" resultType="Integer">
+		/* mybatis.mapper.ticket.getSoldOutYn : 상품 소진 조회 */
+		SELECT	B.GIFT_CNT - B.ISSUE_CNT AS TOTAL_CNT
+		FROM TB_TICKET_GIFT_INFO A 
+		INNER JOIN TB_TICKET_GIFT_ISSUE_INFO B ON B.TICKET_GIFT_SEQ = A.TICKET_GIFT_SEQ
+		WHERE	B.TICKET_GIFT_SEQ = #{ticketGiftSeq}
+		AND A.USE_YN		=	'Y'
+		AND A.EVT_SEQ IS NOT NULL
+	</select>
+</mapper>

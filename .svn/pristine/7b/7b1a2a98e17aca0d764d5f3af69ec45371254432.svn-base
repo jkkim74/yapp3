@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mybatis.mapper.hist">
+	
+	<insert id="insertApiAccessLog" parameterType="ApiAccess">
+		/* mybatis.mapper.hist.insertApiAccess : API 접속 로그를 추가한다. */
+		INSERT INTO TH_API_ACCESS
+		(
+			  CNTR_NO
+			, USER_ID
+			, ACCESS_SERVER_IP_ADDR
+			, ACCESS_IP_ADDR
+			, API_URL
+			, REG_DT
+		) VALUES
+		(
+			  #{cntrNo}
+			, #{userId}
+			, #{accessServerIpAddr}
+			, #{accessIpAddr}
+			, #{apiUrl}
+			, now()
+		)
+	</insert>
+	
+	<insert id="insertApiErrLog" parameterType="ApiError">
+		/* mybatis.mapper.hist.insertApiErrLog : API 에러 로그를 추가한다. */
+		INSERT INTO TH_API_ERROR 
+		(
+			  CNTR_NO
+			, USER_ID
+			, CALLER_IP_ADDR
+			, ACCESS_SERVER_IP_ADDR
+			, API_URL
+			, ERR_MSG
+			, ERR_MSG_CODE
+			, MSG_TYPE_CODE
+			, MSG_KEY
+			, ETC
+			, REG_DT
+		) VALUES
+		(
+			  #{cntrNo}
+			, #{userId}
+			, #{callerIpAddr}
+			, #{accessServerIpAddr}
+			, #{apiUrl}
+			, #{errMsg}
+			, #{errCd}
+			, #{msgTypeCd}
+			, #{msgKey}
+			, #{errMsgDetail}
+			, now()
+		)
+	</insert>
+
+	<insert id="insertErrControl" parameterType="ApiError">
+		/* mybatis.mapper.hist.insertErrControl : API 에러 로그(관제테이블)를 추가한다. */
+		INSERT INTO TH_ERROR_CONTROL
+		(
+			  CNTR_NO
+			, USER_ID
+			, CALLER_IP_ADDR
+			, ACCESS_SERVER_IP_ADDR
+			, API_URL
+			, ERR_MSG
+			, ERR_MSG_CODE
+			, MSG_TYPE_CODE
+			, MSG_KEY
+			, ETC
+			, REG_DT
+		) VALUES
+		(
+			  #{cntrNo}
+			, #{userId}
+			, #{callerIpAddr}
+			, #{accessServerIpAddr}
+			, #{apiUrl}
+			, #{errMsg}
+			, #{errCd}
+			, #{msgTypeCd}
+			, #{msgKey}
+			, #{errMsgDetail}
+			, now()
+		)
+	</insert>
+		
+	<insert id="insertSnsShareInfo" parameterType="SnsShare">
+		/* mybatis.mapper.hist.insertSnsShareInfo : SNS 공유 정보를 추가한다. */
+		INSERT INTO	TH_SNS_SHARE
+		(
+			  CNTR_NO
+			, SHARE_MOBILE_NO
+			, SHARE_ITEM
+			, SHARE_TP
+			, REG_DT
+		) VALUES
+		(
+			  #{cntrNo}
+			, #{shareMobileNo}
+			, #{shareItem}
+			, #{shareTp}
+			, now()
+		)
+	</insert>
+	
+	<insert id="insertPointSndInfo" parameterType="MemPointGet">
+		/* mybatis.mapper.hist.insertPointSndInfo : 포인트 전송내역을 추가한다. */
+		INSERT INTO TH_POINT_SND_INFO 
+		(
+			CNTR_NO
+			,ORD_NO
+			,COORP_CO_ORD_NO
+			,POINT_SND_TYPE
+			,POINT_AMT
+			,REG_USER_ID
+			,REG_DT
+		) VALUES
+		(
+			 #{cntrNo}
+			, #{ordNo}
+			, #{coorpCoOrdNo}
+			, #{pointSndType}
+			, #{pointAmt}
+			, #{memId}
+			, now()
+		)
+	</insert>
+	
+</mapper>

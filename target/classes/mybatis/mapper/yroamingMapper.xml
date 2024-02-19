@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+ * yroamingMapper.xml
+ * 
+ * @author min
+ * @since 2019. 12. 02.
+ * @version 1.0
+ * 
+ * Modification Information
+ * Mod Date		Modifier		Description
+ * ========================================
+ *
+ * Copyright (c) 2018 KTDS, Inc. All Rights Reserved
+ -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mybatis.mapper.yroaming">
+	<select id="getYRoaming" resultType="Roaming">
+		/* mybatis.mapper.yroaming.getYRoaming : Y로밍을 조회한다. */
+		SELECT 
+			TA.VAS_ITEM_CD
+			, TA.VAS_ITEM_NM
+			, TA.VAS_ITEM_ID
+			, TA.PRICE
+			, TB.USE_TERM
+			, TB.DATA_AMOUNT
+			, TB.IMG1
+			, TB.IMG2
+			, TB.ITEM_CONTENTS
+			, TB.USE_TERM_CONTENTS
+			, TB.DISCOUNT_MEMO
+			, TB.AGE
+			, TB.USE_ST_DT1
+			, TB.USE_ED_DT1
+			, TB.USE_ST_DT2
+			, TB.USE_ED_DT2
+			, TB.USE_ST_DT3
+			, TB.USE_ED_DT3
+			, TB.USE_ST_DT4
+			, TB.USE_ED_DT4
+			, TB.REMARKS1
+			, TB.REMARKS2
+			, TB.REMARKS3
+			, TB.REMARKS4
+			, TB.USE_YN
+			, #{status} AS STATUS
+			, #{efctStDt} AS EFCT_ST_DT
+			, #{efctFnsDt} AS EFCT_FNS_DT
+			, #{prodHstSeq} AS PROD_HST_SEQ
+			, 'N' AS PROD_TYPE_CODE
+		FROM 
+			TM_VAS_ITEM TA 
+		LEFT JOIN TB_YRITEM TB 
+			ON TA.VAS_ITEM_CD = TB.ITEM_CD 
+		WHERE TA.VAS_CD = 'YROAM' 
+		AND TA.USE_YN = 'Y'
+		AND TA.VAS_ITEM_CD		= #{itemCd}
+	</select>
+	<select id="getYRoamingChk" resultType="Roaming">
+		/* mybatis.mapper.yroaming.getYRoaming : Y로밍을 조회한다. */
+		SELECT 
+			TA.VAS_ITEM_CD
+		FROM 
+			TM_VAS_ITEM TA 
+		LEFT JOIN TB_YRITEM TB 
+			ON TA.VAS_ITEM_CD = TB.ITEM_CD 
+		WHERE TA.VAS_CD = 'YROAM' 
+		AND TA.USE_YN = 'Y'
+		AND ((TB.USE_ST_DT1 <![CDATA[ <= ]]> #{efctStDt} AND TB.USE_ED_DT1 <![CDATA[ >= ]]> #{efctFnsDt}) OR (TB.USE_ST_DT2 <![CDATA[ <= ]]> #{efctStDt} AND TB.USE_ED_DT2 <![CDATA[ >= ]]> #{efctFnsDt})
+			OR (TB.USE_ST_DT3 <![CDATA[ <= ]]> #{efctStDt} AND TB.USE_ED_DT3 <![CDATA[ >= ]]> #{efctFnsDt}) OR (TB.USE_ST_DT4 <![CDATA[ <= ]]> #{efctStDt} AND TB.USE_ED_DT4 <![CDATA[ >= ]]> #{efctFnsDt}))
+		AND TA.VAS_ITEM_CD		= #{itemCd}
+	</select>
+	<update id="updateYRoaming" parameterType="Roaming">
+		/* mybatis.mapper.yroaming.updateYRoaming : Y로밍을 변경한다. */
+		UPDATE TB_EVENT_MENU_ROOM
+			SET	
+				MOD_DT		= now()
+				<if test='delYn != null and delYn != ""'>
+				, DEL_YN					= #{delYn}
+				</if>
+				<if test='invitedFnshYn != null and invitedFnshYn != ""'>
+				, INVITED_FNSH_YN		= #{invitedFnshYn}
+				</if>
+				<if test='joinFnshYn != null and joinFnshYn != ""'>
+				, JOIN_FNSH_YN			= #{joinFnshYn}
+				</if>
+		WHERE
+				RM_SEQ		= #{rmSeq}
+	</update>
+	<insert id="insertYRoaming" parameterType="AplyRoaming">
+	/* mybatis.mapper.yroaming.insertYRoaming : Y로밍을 신청한다. */
+	INSERT INTO TB_YRITEM_APPLY
+	(
+		CNTR_NO
+		, ITEM_CD
+		, APPLY_ST_DT
+		, APPLY_ED_DT
+		, STATUS
+		, REG_DT
+	) VALUES (
+		#{cntrNo}
+		, #{prodId}
+		, #{efctStDt}
+		, #{efctFnsDt}
+		, #{prodSbscTrmnCd}
+		, now()
+	)
+	</insert>
+</mapper>

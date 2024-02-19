@@ -1,0 +1,30 @@
+
+
+@font-face {
+  font-family: 'APPLESDGOTHICNEO';
+  src: url('../font/APPLESDGOTHICNEOR.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'APPLESDGOTHICNEO';
+  src: url('../font/APPLESDGOTHICNEOB.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'yspotlightotapp';
+  src: url('../font/yspotlightotapp.eot');
+  src: url('../font/yspotlightotapp.eot?#iefix') format('embedded-opentype'),
+       url('../font/yspotlightotapp.svg#yspotlightotapp') format('svg'),
+       url('../font/yspotlightotapp.ttf') format('truetype'),
+       url('../font/yspotlightotapp.woff') format('woff'),
+       url('../font/yspotlightotapp.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+}
+
+
+body{font-family:'APPLESDGOTHICNEO', sans-serif;}

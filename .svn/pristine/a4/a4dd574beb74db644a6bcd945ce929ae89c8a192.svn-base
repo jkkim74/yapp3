@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+ * rctcontactMapper.xml
+ * 
+ * @author kibon.kim
+ * @since 2020. 8. 21.
+ * @version 1.0
+ * 
+ * Modification Information
+ * Mod Date		Modifier		Description
+ * ========================================
+ * 2020. 5. 13.	min 			yteenfriends 기능 
+ * Copyright (c) 2018 KTDS, Inc. All Rights Reserved
+ -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mybatis.mapper.rctcontact">
+	<select id="getRecentContactList" resultType="RecentContact">
+		/* mybatis.mapper.rctcontact.getRecentContactList : 최근 연락처 정보를 조회한다. */
+		SELECT 
+			  A.RCT_SEQ
+			, A.RECV_CNTR_NO
+			, A.RECV_MOBILE_NO
+			, A.RECV_NAME
+		FROM 
+			TB_RECENT_CONTACT A
+		WHERE A.CNTR_NO = #{cntrNo}
+		ORDER BY A.RCT_SEQ DESC
+		LIMIT 5
+	</select>
+	
+	<insert id="insertRecentContact" parameterType="RecentContact">
+		/* mybatis.mapper.rctcontact.insertRecentContact : 최근 연락처를 등록한다. */
+		INSERT INTO TB_RECENT_CONTACT
+		(
+			CNTR_NO
+			, RECV_CNTR_NO
+			, RECV_MOBILE_NO
+			, RECV_NAME
+			, DATA_GIFT_TYPE
+			, REG_DT
+			, MOD_DT
+		)
+		VALUES(
+			 #{cntrNo}
+			,  #{recvCntrNo}
+			,  #{recvMobileNo}
+			,  #{recvName}
+			,  #{dataGiftType}
+			, now()
+			, now()
+		)		
+	</insert>
+	
+	<select id="dupContactCnt" parameterType="RecentContact" resultType="int">
+		/* mybatis.mapper.rctcontact.dupContactCnt : 최근 등록된 연락처가 있는지 조회한다. */
+		SELECT
+		COUNT(*) AS CNT
+		FROM
+		TB_RECENT_CONTACT A
+		WHERE A.CNTR_NO = #{cntrNo}
+		AND A.RECV_CNTR_NO = #{recvCntrNo}
+	</select>
+	
+	<delete id="deleteRecentContact" parameterType="RecentContact">
+		/* mybatis.mapper.rctcontact.deleteRecentContact : 최근연락처에서 연락처를 삭제한다. */
+		DELETE
+		FROM
+		TB_RECENT_CONTACT
+		WHERE CNTR_NO = #{cntrNo}
+		AND RECV_CNTR_NO = #{recvCntrNo}
+	</delete>
+	
+</mapper>

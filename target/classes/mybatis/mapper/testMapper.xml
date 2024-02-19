@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mybatis.mapper.test">
+	
+	<select id="getImg" resultType="hashmap">
+		/* mybatis.mapper.common.getGiftListRecent : 최근 선물한 친구 목록(5명) 을 조회한다. */
+		SELECT 
+			  A.user_id
+			, A.user_name
+			, A.img
+		FROM 
+			USER_INFO A
+	</select>
+
+	<insert id="insertImg" parameterType="hashmap">
+		/* mybatis.mapper.common.insertGiftInfo : 선물하기 이력을 추가한다. */
+		INSERT INTO tb_attach_file
+		(
+			FILE_ID
+			, FILE_TP
+			, FILE_NM
+			, FILE_DATA
+			, REG_DT
+		) VALUES
+		(
+			#{fileId}
+			, #{fileTp}
+			, #{fileNm}
+			, #{fileData}
+			, now()
+		)
+	</insert>
+	
+	<insert id="insertUserInfo" parameterType="UserInfo">
+		/* mybatis.mapper.user.insertUserInfo : 사용자 정보를 추가한다. */
+		INSERT INTO TB_USER (
+			  CNTR_NO
+			, MOBILE_NO
+			, USER_ID
+			, FOURTEEN_YN
+			, PUSH_RCV_YN
+			, MKT_RCV_YN
+			, REQ_RCV_YN
+			, JOIN_STATUS
+			, DBOX_STATUS
+			, MKT_CHG_DT
+			, REG_DT
+			, MOD_DT
+		) VALUES (
+			  #{cntrNo}
+			, #{mobileNo}
+			, null
+			, 'N'
+			, 'Y'
+			, 'Y'
+			, 'Y'
+			, 'G0001'
+			, 'Y'
+			, now()
+			, now()
+			, now()
+		)
+	</insert>
+	
+</mapper>

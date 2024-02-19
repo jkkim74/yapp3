@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+ * yfriendsMapper.xml
+ * 
+ * @author seungman.yu
+ * @since 2019. 7. 29.
+ * @version 1.0
+ * 
+ * Modification Information
+ * Mod Date		Modifier		Description
+ * ========================================
+ * 2019. 7. 29.	min 			Yfriends 기능 
+ * Copyright (c) 2018 KTDS, Inc. All Rights Reserved
+ -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mybatis.mapper.reward">
+	<!-- 리워드 개수 조회 -->
+	<select id="getRewardCount" resultType="int">
+		/* mybatis.mapper.reward.getRewardCount */
+		SELECT COUNT(*) AS CNT
+		  FROM TB_REWARD_INFO A
+		 INNER JOIN TB_GIFT_MASTER B
+			ON A.GIFT_SEQ = B.GIFT_SEQ
+		 WHERE TO_CHAR(now(), 'YYYYMMDDHH24MI') BETWEEN B.VALID_START_DT AND B.VALID_END_DT
+		 <choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+        		AND A.CNTR_NO = #{cntrNo}
+        	</when>
+        	<otherwise>
+        	    AND A.USER_ID = #{userId}
+        	</otherwise>
+        </choose>
+		   AND B.GIFT_TYPE = 'G0002'
+		   AND B.USE_YN='Y'
+	</select>
+	
+	
+	<!-- 리워드 리스트 조회-->
+	<select id="getRewardList" resultType="RewardData">
+	/* mybatis.mapper.reward.getRewardList */
+	    SELECT A.REW_SEQ
+	    	 , B.GIFT_SEQ
+	    	 , B.IMG_URL
+	    	 , B.GIFT_NAME
+	    	 , B.GIFT_INTRO
+	    	 , SUBSTR(B.VALID_START_DT,0,5)||'.'||SUBSTR(B.VALID_START_DT,5,2)||'.'||SUBSTR(B.VALID_START_DT,7,2) AS VALID_START_DT
+	    	 , SUBSTR(B.VALID_END_DT,0,5)||'.'||SUBSTR(B.VALID_END_DT,5,2)||'.'||SUBSTR(B.VALID_END_DT,7,2) AS VALID_END_DT
+	    	 , TO_CHAR(A.ISSUE_DT, 'YYYY.MM.DD') AS ISSUE_DT
+	    	 , D.EVT_TITLE
+		  FROM TB_REWARD_INFO A
+		 INNER JOIN TB_GIFT_MASTER B
+			ON A.GIFT_SEQ = B.GIFT_SEQ
+		 INNER JOIN TB_GIFT_ISSUE_INFO C 
+		  	ON C.ISSUE_SEQ=A.ISSUE_SEQ
+		 INNER JOIN TB_EVENT_MASTER D 
+		 	ON C.EVT_SEQ=D.EVT_SEQ			
+		 WHERE TO_CHAR(now(), 'YYYYMMDDHH24MI') BETWEEN B.VALID_START_DT AND B.VALID_END_DT
+		 <choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+        		AND A.CNTR_NO = #{cntrNo}
+        	</when>
+        	<otherwise>
+        	    AND A.USER_ID = #{userId}
+        	</otherwise>
+        </choose>
+		   AND B.GIFT_TYPE = 'G0002'
+		   AND B.USE_YN='Y'
+		 ORDER by B.VALID_END_DT
+	</select>
+	
+	
+	<!-- 리워드 상세 조회-->
+	<select id="getRewardInfo"  parameterType="java.util.HashMap" resultType="RewardData">
+	/* mybatis.mapper.reward.getRewardInfo */
+	    SELECT D.EVT_TYPE 
+	         , C.EVT_SEQ 
+	    	 , B.IMG_URL
+	    	 , B.GIFT_SEQ
+	    	 , B.GIFT_NAME
+	    	 , B.GIFT_INTRO
+	    	 , SUBSTR(B.VALID_START_DT,0,5)||'.'||SUBSTR(B.VALID_START_DT,5,2)||'.'||SUBSTR(B.VALID_START_DT,7,2) AS VALID_START_DT
+	    	 , SUBSTR(B.VALID_END_DT,0,5)||'.'||SUBSTR(B.VALID_END_DT,5,2)||'.'||SUBSTR(B.VALID_END_DT,7,2) AS VALID_END_DT
+	    	 , B.CUPN_USE_INFO_YN
+	    	 , B.CUPN_USE_INFO
+	    	 , B.CUPN_ETC_YN
+	    	 , B.CUPN_ETC
+	    	 , B.LAND_URL_TYPE
+	    	 , B.LAND_URL
+	    	 , B.LAND_BUTTON_TEXT
+	    	 , A.REW_SEQ
+	    	 , A.REW_ID
+	    	 , A.REW_PW
+	    	 , A.PW_YN
+	    	 , A.REG_DT
+	    	 , (SELECT CODE_NM FROM TM_GROUP_CODE WHERE GRP_CODE_ID = 'RN_EVENT_TYPE' AND CODE_ID = D.EVT_TYPE) AS EVT_TYPE_NM
+	    	 , D.EVT_OPTION_TITLE
+	    	 , D.EVT_TITLE
+	    	 , B.REWARD_TYPE
+	    	 , A.URL_ID
+		  FROM TB_REWARD_INFO A
+		 INNER JOIN TB_GIFT_MASTER B
+			ON A.GIFT_SEQ = B.GIFT_SEQ
+		 INNER JOIN TB_GIFT_ISSUE_INFO C 
+		  	ON C.ISSUE_SEQ=A.ISSUE_SEQ
+		 INNER JOIN TB_EVENT_MASTER D 
+		 	ON C.EVT_SEQ=D.EVT_SEQ
+		 WHERE TO_CHAR(now(), 'YYYYMMDDHH24MI') BETWEEN B.VALID_START_DT AND B.VALID_END_DT
+		 <choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+        		AND A.CNTR_NO = #{cntrNo}
+        	</when>
+        	<otherwise>
+        	    AND A.USER_ID = #{userId}
+        	</otherwise>
+        </choose>
+		   AND B.USE_YN='Y'
+		   AND A.REW_SEQ = #{rewSeq}
+	</select>
+	
+	
+	<!-- 응모권 리워드 리스트 조회-->
+	<select id="getTicketRewardList" resultType="TicketRewardData">
+	/* mybatis.mapper.reward.getTicketRewardList  210817 응모권 리워드 리스트 조회 */
+	    SELECT A.TICKET_SEQ
+	    	 , A.WIN_YN
+	    	 , B.EVT_TITLE
+	    	 , D.GIFT_NAME
+	    	 , D.IMG_URL
+	    	 , TO_CHAR(A.REG_DT, 'YYYY.MM.DD') AS REG_DT
+	    	 , (CASE WHEN A.WIN_YN = 'Y' THEN SUBSTR(F.VALID_START_DT,0,5)||'.'||SUBSTR(F.VALID_START_DT,5,2)||'.'||SUBSTR(F.VALID_START_DT,7,2) ELSE SUBSTR(A.VALID_START_DT,0,5)||'.'||SUBSTR(A.VALID_START_DT,5,2)||'.'||SUBSTR(A.VALID_START_DT,7,2) END) AS VALID_START_DT  
+	    	 , (CASE WHEN A.WIN_YN = 'Y' THEN SUBSTR(F.VALID_END_DT,0,5)||'.'||SUBSTR(F.VALID_END_DT,5,2)||'.'||SUBSTR(F.VALID_END_DT,7,2) ELSE SUBSTR(A.VALID_END_DT,0,5)||'.'||SUBSTR(A.VALID_END_DT,5,2)||'.'||SUBSTR(A.VALID_END_DT,7,2) END) AS VALID_END_DT
+ 	 	     , SUBSTR(E.DATA_GIVE_DT,0,5)||'.'||SUBSTR(E.DATA_GIVE_DT,5,2)||'.'||SUBSTR(E.DATA_GIVE_DT,7,2) AS DATA_VALID_START_DT
+             , SUBSTR(TO_CHAR(date_trunc('month',to_date(E.DATA_GIVE_DT, 'YYYYMMDDHH24MI')+interval '2 month') -interval '1 day', 'YYYYMMDDHH24MI'),0,5)||'.'||SUBSTR(TO_CHAR(date_trunc('month',to_date(E.DATA_GIVE_DT, 'YYYYMMDDHH24MI')+interval '2 month') -interval '1 day', 'YYYYMMDDHH24MI'),5,2)||'.'||SUBSTR(TO_CHAR(date_trunc('month',to_date(E.DATA_GIVE_DT, 'YYYYMMDDHH24MI')+interval '2 month') -interval '1 day', 'YYYYMMDDHH24MI'),7,2) AS DATA_VALID_END_DT
+	    	 , E.DATA_GIVE_YN
+	    	 , E.GIFT_ISSUE_SEQ
+	    	 , TO_CHAR(A.MOD_DT, 'YYYY.MM.DD') AS TICKET_GIFT_REG_DT
+	    	 , F.GIFT_NAME AS TICKET_GIFT_NAME
+	    	 , F.GIFT_IMG_URL AS TICKET_GIFT_IMG_URL
+	    	 , F.GIFT_TYPE
+		 FROM TB_TICKET_REWARD_INFO A
+ 		 INNER JOIN TB_EVENT_MASTER B
+			ON A.EVT_SEQ = B.EVT_SEQ
+		 INNER JOIN TB_GIFT_ISSUE_INFO C
+			ON C.ISSUE_SEQ = A.ISSUE_SEQ
+		 INNER JOIN TB_GIFT_MASTER D
+			ON C.GIFT_SEQ = D.GIFT_SEQ
+		 LEFT OUTER JOIN TB_TICKET_GIFT_REWARD_INFO E
+			ON E.GIFT_ISSUE_SEQ = A.GIFT_ISSUE_SEQ			
+		 LEFT OUTER JOIN TB_TICKET_GIFT_INFO F
+			ON F.TICKET_GIFT_SEQ = E.TICKET_GIFT_SEQ
+		 <choose>
+        	<when test ='cntrNo != null and cntrNo != ""'>
+        		WHERE A.CNTR_NO = #{cntrNo}
+        	</when>
+        	<otherwise>
+        	    WHERE A.USER_ID = #{userId}
+        	</otherwise>
+        </choose>
+		   AND CASE WHEN A.WIN_YN = 'Y' THEN TO_CHAR(now(), 'YYYYMMDDHH24MI') BETWEEN F.VALID_START_DT AND F.VALID_END_DT
+		   		ELSE  TO_CHAR(now(), 'YYYYMMDDHH24MI') BETWEEN A.VALID_START_DT AND A.VALID_END_DT
+		   		END
+		   AND D.USE_YN='Y'
+		 <if test="lnbYn != null">
+		 	AND ( A.WIN_YN IS NULL OR A.WIN_YN = 'Y')
+		 </if>
+		 ORDER BY WIN_YN DESC, VALID_END_DT
+	</select>
+	
+		
+	<!-- 데이터 리워드 리스트 조회-->
+	<select id="getDataRewardList" resultType="DataRewardData">
+	/* mybatis.mapper.reward.getDataRewardList */
+	    SELECT A.DATA_REW_SEQ
+	    	 , B.GIFT_SEQ
+	    	 , B.IMG_URL
+	    	 , B.GIFT_NAME
+	    	 , SUBSTR(B.VALID_START_DT,0,5)||'.'||SUBSTR(B.VALID_START_DT,5,2)||'.'||SUBSTR(B.VALID_START_DT,7,2) AS VALID_START_DT
+	    	 , SUBSTR(B.VALID_END_DT,0,5)||'.'||SUBSTR(B.VALID_END_DT,5,2)||'.'||SUBSTR(B.VALID_END_DT,7,2) AS VALID_END_DT
+ 	 	     , SUBSTR(A.DATA_GIVE_DT,0,5)||'.'||SUBSTR(A.DATA_GIVE_DT,5,2)||'.'||SUBSTR(A.DATA_GIVE_DT,7,2) AS DATA_VALID_START_DT
+             , SUBSTR(TO_CHAR(date_trunc('month',to_date(A.DATA_GIVE_DT, 'YYYYMMDDHH24MI')+interval '2 month') -interval '1 day', 'YYYYMMDDHH24MI'),0,5)||'.'||SUBSTR(TO_CHAR(date_trunc('month',to_date(A.DATA_GIVE_DT, 'YYYYMMDDHH24MI')+interval '2 month') -interval '1 day', 'YYYYMMDDHH24MI'),5,2)||'.'||SUBSTR(TO_CHAR(date_trunc('month',to_date(A.DATA_GIVE_DT, 'YYYYMMDDHH24MI')+interval '2 month') -interval '1 day', 'YYYYMMDDHH24MI'),7,2) AS DATA_VALID_END_DT
+	    	 , A.DATA_GIVE_YN	    	 
+	    	 , A.SUCCESS_YN
+	    	 , TO_CHAR(A.ISSUE_DT, 'YYYY.MM.DD') AS ISSUE_DT
+	    	 , D.EVT_TITLE
+		  FROM TB_DATA_REWARD_INFO A
+		 INNER JOIN TB_GIFT_MASTER B
+			ON A.GIFT_SEQ = B.GIFT_SEQ
+		 INNER JOIN TB_GIFT_ISSUE_INFO C 
+		  	ON C.ISSUE_SEQ=A.ISSUE_SEQ
+		 INNER JOIN TB_EVENT_MASTER D 
+		 	ON C.EVT_SEQ=D.EVT_SEQ			
+		 WHERE TO_CHAR(now(), 'YYYYMMDDHH24MI') BETWEEN B.VALID_START_DT AND B.VALID_END_DT
+		   AND A.CNTR_NO = #{cntrNo}
+		   AND B.GIFT_TYPE = 'G0004'
+		   AND B.USE_YN='Y'
+		 ORDER by A.DATA_GIVE_DT DESC, A.ISSUE_DT
+	</select>
+	
+	<!-- 데이터 리워드 상세 조회-->
+	<select id="getDataRewardDetail" resultType="DataRewardData">
+	/* mybatis.mapper.reward.getDataRewardDetail 데이터 리워드 상세 조회 */
+	    SELECT A.DATA_REW_SEQ
+	    	 , B.GIFT_SEQ
+	    	 , B.IMG_URL
+	    	 , B.GIFT_NAME
+	    	 , SUBSTR(B.VALID_START_DT,0,5)||'.'||SUBSTR(B.VALID_START_DT,5,2)||'.'||SUBSTR(B.VALID_START_DT,7,2) AS VALID_START_DT
+	    	 , SUBSTR(B.VALID_END_DT,0,5)||'.'||SUBSTR(B.VALID_END_DT,5,2)||'.'||SUBSTR(B.VALID_END_DT,7,2) AS VALID_END_DT
+ 	 	     , SUBSTR(A.DATA_GIVE_DT,0,5)||'.'||SUBSTR(A.DATA_GIVE_DT,5,2)||'.'||SUBSTR(A.DATA_GIVE_DT,7,2) AS DATA_VALID_START_DT
+             , SUBSTR(TO_CHAR(date_trunc('month',to_date(A.DATA_GIVE_DT, 'YYYYMMDDHH24MI')+interval '2 month') -interval '1 day', 'YYYYMMDDHH24MI'),0,5)||'.'||SUBSTR(TO_CHAR(date_trunc('month',to_date(A.DATA_GIVE_DT, 'YYYYMMDDHH24MI')+interval '2 month') -interval '1 day', 'YYYYMMDDHH24MI'),5,2)||'.'||SUBSTR(TO_CHAR(date_trunc('month',to_date(A.DATA_GIVE_DT, 'YYYYMMDDHH24MI')+interval '2 month') -interval '1 day', 'YYYYMMDDHH24MI'),7,2) AS DATA_VALID_END_DT
+	    	 , A.DATA_GIVE_YN	    	 
+	    	 , A.SUCCESS_YN
+	    	 , TO_CHAR(A.ISSUE_DT, 'YYYY.MM.DD') AS ISSUE_DT
+	    	 , D.EVT_TITLE
+	    	 , B.DATA_AMT
+	    	 , COALESCE(B.GIFT_DATA_CODE,'B') AS GIFT_DATA_CODE
+	    	 , COALESCE(B.DATA_EXPIRE_TYPE,'1') AS DATA_EXPIRE_TYPE
+		  FROM TB_DATA_REWARD_INFO A
+		 INNER JOIN TB_GIFT_MASTER B
+			ON A.GIFT_SEQ = B.GIFT_SEQ
+		 INNER JOIN TB_GIFT_ISSUE_INFO C 
+		  	ON C.ISSUE_SEQ=A.ISSUE_SEQ
+		 INNER JOIN TB_EVENT_MASTER D 
+		 	ON C.EVT_SEQ=D.EVT_SEQ			
+		 WHERE TO_CHAR(now(), 'YYYYMMDDHH24MI') BETWEEN B.VALID_START_DT AND B.VALID_END_DT
+		   AND A.CNTR_NO = #{cntrNo}
+		   AND B.GIFT_TYPE = 'G0004'
+		   AND B.USE_YN='Y'
+		   AND A.DATA_REW_SEQ =#{dataRewSeq}
+	</select>
+	
+	<!-- 데이터쿠폰 사용 KOS 데이터 지급여부 UPDATE-->
+	<update id="updateDataGiveInfo" parameterType="DataRewardData">
+		/* mybatis.mapper.reward.updateDataGiveInfo 데이터쿠폰 사용 KOS 데이터 지급여부 UPDATE. */
+		UPDATE TB_DATA_REWARD_INFO SET
+				DATA_GIVE_YN			= 	#{dataGiveYn}
+			,	DATA_GIVE_DT			=	TO_CHAR(CURRENT_DATE, 'YYYYMMDD0000')
+			,	SUCCESS_YN				=	#{successYn}
+			,	MOD_DT					=	now()
+		WHERE	DATA_REW_SEQ	= #{dataRewSeq}
+		AND		DATA_GIVE_YN 	!= 'Y'
+	</update>
+	
+	<!-- 수강 리워드 리스트 조회-->
+	<select id="getClassRewardList" resultType="RewardData">
+	/* mybatis.mapper.reward.getClassRewardList */
+		 SELECT A.REW_SEQ
+	    	 , B.GIFT_SEQ
+	    	 , B.IMG_URL
+	    	 , B.GIFT_NAME
+	    	 , B.GIFT_INTRO
+	    	 , SUBSTR(B.VALID_START_DT,0,5)||'.'||SUBSTR(B.VALID_START_DT,5,2)||'.'||SUBSTR(B.VALID_START_DT,7,2) AS VALID_START_DT
+	    	 , SUBSTR(B.VALID_END_DT,0,5)||'.'||SUBSTR(B.VALID_END_DT,5,2)||'.'||SUBSTR(B.VALID_END_DT,7,2) AS VALID_END_DT
+	    	 , B.VALID_START_DT AS VALID_START_DT_ORG
+	    	 , B.VALID_END_DT AS VALID_END_DT_ORG
+	    	 , TO_CHAR(A.ISSUE_DT, 'YYYY.MM.DD') AS ISSUE_DT
+	    	 , D.EVT_TITLE
+		  FROM (
+		  			SELECT tcr.*, tcj.reg_dt AS ISSUE_DT 
+					  FROM tb_class_reward_info tcr 
+		  			  INNER JOIN tb_class_join tcj
+		  			  ON tcr.rew_seq = tcj.rew_seq
+		  			WHERE 
+		  			  <choose>
+        				<when test ='cntrNo != null and cntrNo != ""'>
+        					tcj.cntr_no = #{cntrNo}
+        				</when>
+        				<otherwise>
+        	    			tcj.user_id = #{userId}
+        				</otherwise>
+        			  </choose>
+		  			  AND tcj.del_yn = 'N' 
+		  		 ) AS A
+		 INNER JOIN TB_GIFT_MASTER B
+			ON A.GIFT_SEQ = B.GIFT_SEQ
+		 INNER JOIN TB_GIFT_ISSUE_INFO C 
+		  	ON C.ISSUE_SEQ=A.ISSUE_SEQ
+		 INNER JOIN TB_EVENT_MASTER D 
+		 	ON C.EVT_SEQ=D.EVT_SEQ	
+		 WHERE 
+		 	TO_CHAR(now(), 'YYYYMMDDHH24MI') BETWEEN D.EVT_START_DT AND D.EVT_END_DT
+			AND B.GIFT_TYPE = 'G0005'
+			AND B.USE_YN='Y'
+			ORDER by D.EVT_END_DT
+	</select>
+	
+	
+	<!-- 수강 리워드 상세 조회-->
+	<select id="getClassRewardInfo"  parameterType="java.util.HashMap" resultType="RewardData">
+	/* mybatis.mapper.reward.getClassRewardInfo */   
+		 SELECT D.EVT_TYPE 
+	       	 , C.EVT_SEQ 
+	    	 , B.IMG_URL
+	    	 , B.GIFT_SEQ
+	    	 , B.GIFT_NAME
+	    	 , B.GIFT_INTRO
+	    	 , SUBSTR(B.VALID_START_DT,0,5)||'.'||SUBSTR(B.VALID_START_DT,5,2)||'.'||SUBSTR(B.VALID_START_DT,7,2) AS VALID_START_DT
+	    	 , SUBSTR(B.VALID_END_DT,0,5)||'.'||SUBSTR(B.VALID_END_DT,5,2)||'.'||SUBSTR(B.VALID_END_DT,7,2) AS VALID_END_DT
+	    	 , B.CUPN_USE_INFO_YN
+	    	 , B.CUPN_USE_INFO
+	    	 , B.CUPN_ETC_YN
+	    	 , B.CUPN_ETC
+	    	 , B.LAND_URL_TYPE
+	    	 , B.LAND_URL
+	    	 , B.LAND_BUTTON_TEXT
+	    	 , A.REW_SEQ
+	    	 , A.REW_ID
+	    	 , A.REG_DT
+	    	 , (SELECT CODE_NM FROM TM_GROUP_CODE WHERE GRP_CODE_ID = 'RN_EVENT_TYPE' AND CODE_ID = D.EVT_TYPE) AS EVT_TYPE_NM
+	    	 , D.EVT_OPTION_TITLE
+	    	 , D.EVT_TITLE
+	    	 , C.ISSUE_SEQ
+	    	 , A.JOIN_SEQ
+		  FROM (
+		  			SELECT tcr.*, tcj.join_seq, tcj.reg_dt AS ISSUE_DT 
+					  FROM tb_class_reward_info tcr 
+		  			  INNER JOIN tb_class_join tcj
+		  			  ON tcr.rew_seq = tcj.rew_seq
+		  			WHERE 
+		  			  <choose>
+        				<when test ='cntrNo != null and cntrNo != ""'>
+        					tcj.cntr_no = #{cntrNo}
+        				</when>
+        				<otherwise>
+        	    			tcj.user_id = #{userId}
+        				</otherwise>
+        			  </choose>
+		  			AND tcj.del_yn = 'N'  
+		  		 ) AS A
+		 INNER JOIN TB_GIFT_MASTER B
+			ON A.GIFT_SEQ = B.GIFT_SEQ
+		 INNER JOIN TB_GIFT_ISSUE_INFO C 
+		  	ON C.ISSUE_SEQ=A.ISSUE_SEQ
+		 INNER JOIN TB_EVENT_MASTER D 
+		 	ON C.EVT_SEQ=D.EVT_SEQ
+		 WHERE 
+		   TO_CHAR(now(), 'YYYYMMDDHH24MI') BETWEEN D.EVT_START_DT AND D.EVT_END_DT
+		   AND B.USE_YN='Y'
+		   AND A.REW_SEQ = #{rewSeq}
+	</select>
+	
+</mapper>

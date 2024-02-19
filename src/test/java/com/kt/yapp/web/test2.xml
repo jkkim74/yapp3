@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><Header xmlns:ns1="http://bizhub.kt.com" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns="http://schemas.xmlsoap.org/soap/envelope/"><ns1:commonHeader xmlns="">
+    <ns1:appName>NBSS_ARO</ns1:appName>
+    <ns1:svcName>DrctlyUseQntDtlRetvSO</ns1:svcName>
+    <ns1:fnName>service</ns1:fnName>
+    <ns1:globalNo>c87a4415b85749e8bad7f31803849145</ns1:globalNo>
+    <ns1:chnlType>YD</ns1:chnlType>
+    <ns1:trFlag>R</ns1:trFlag>
+    <ns1:trDate>20230621</ns1:trDate>
+    <ns1:trTime>145201291</ns1:trTime>
+    <ns1:clntIp>10.217.41.182</ns1:clntIp>
+    <ns1:responseType>S</ns1:responseType>
+    <ns1:responseCode>RATS1000</ns1:responseCode>
+    <ns1:responseTitle>API 연동에러</ns1:responseTitle>
+    <ns1:responseBasc>잠시 후 재처리하여 주십시오. 동일 현상 발생시 ISC로 문의해 주십시오.(RATS1000)</ns1:responseBasc>
+    <ns1:responseDtal>proframe.core.app.ProObjectApplicationException: RATS1000 잠시 후 재처리하여 주십시오. 동일 현상 발생시 ISC로 문의해 주십시오.(RATS1000)
+        at nbss.rat.bc.use.mbl.DrctlyUseQntListRetvBO.retrieveDrctlyUseQnt(DrctlyUseQntListRetvBO.java:437)
+        at nbss.aro.bc.tlt.DrctlyUseQntRetvBO.retrieveDrctlyUseQnt(DrctlyUseQntRetvBO.java:101)
+        at nbss.aro.bc.tlt.DrctlyUseQntRetvBOC.retrieveDrctlyUseQnt(DrctlyUseQntRetvBOC.java:113)
+        at nbss.aro.sv.tlt.DrctlyUseQntDtlRetvSO.service(DrctlyUseQntDtlRetvSO.java:139)
+        at proframe.core.ejb.BusinessLocalBean.process(BusinessLocalBean.java:146)
+        at proframe.core.internal.ProFrame.process(ProFrame.java:227)
+        at proframe.core.internal.ProFrame.run(ProFrame.java:116)
+        at proframe.core.ippr.webservice.ProFrameWebServiceProcessor.doProcess(ProFrameWebServiceProcessor.java:216)
+        at proframe.core.ippr.webservice.StandAloneWebServiceSoapHeaderIppr.runWebServiceIppr(StandAloneWebServiceSoapHeaderIppr.java:138)
+        at proframe.core.ippr.webservice.StandAloneWebServiceSoapHeaderIppr.run(StandAloneWebServiceSoapHeaderIppr.java:88)
+        at proframe.core.ippr.webservice.StandAloneWebServiceSoapHeaderIppr.doPost(StandAloneWebServiceSoapHeaderIppr.java:58)
+        at javax.servlet.http.HttpServlet.service(HttpServlet.java:754)
+        at javax.servlet.http.HttpServlet.service(HttpServlet.java:847)
+        at jeus.servlet.engine.ServletWrapper.executeServlet(ServletWrapper.java:172)
+        at jeus.servlet.engine.ServletWrapper.execute(ServletWrapper.java:149)
+        at jeus.servlet.engine.RequestProcessor.run(RequestProcessor.java:204)
+        at jeus.util.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:1211)
+        at jeus.util.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:1261)
+        at jeus.servlet.engine.WebThreadPoolExecutor$WebRequestWorker.run(WebThreadPoolExecutor.java:340)
+        at java.lang.Thread.run(Thread.java:745)
+        Caused by: java.io.IOException: Server returned HTTP response code: 504 for URL: http://dev.ratuq.kt.com/uq-summary?svcContId=496999161&amp;sbscrNo=01064280908&amp;retvStDt=20230621&amp;retvType=null&amp;prodId=null&amp;unitSvcGroupCd=PALV_T
+        at sun.net.www.protocol.http.HttpURLConnection.getInputStream(HttpURLConnection.java:1627)
+        at nbss.rat.rest.RestClient.requestGet(RestClient.java:57)
+        at nbss.rat.bc.use.mbl.DrctlyUseQntListRetvBO.retrieveDrctlyUseQnt(DrctlyUseQntListRetvBO.java:345)
+        ... 19 more</ns1:responseDtal>
+    <ns1:responseSystem>OB</ns1:responseSystem>
+    <ns1:userId>91192332</ns1:userId>
+    <ns1:orgId>SPT8050</ns1:orgId>
+    <ns1:srcId>SRC_RETRIEVEDRCTLYUSEQNTDTL</ns1:srcId>
+    <ns1:curHostId>billonDom02Svr21</ns1:curHostId>
+    <ns1:lgDateTime>20230621145039</ns1:lgDateTime>
+    <ns1:cmpnCd>KT</ns1:cmpnCd>
+</ns1:commonHeader></Header><soapenv:Body><ns1:DrctlyUseQntDtlRetvSO_service_response xmlns="http://schemas.xmlsoap.org/soap/envelope/" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="http://bizhub.kt.com">
+    <ns1:bizHeader xmlns="">
+        <ns1:orderId>orderId</ns1:orderId>
+        <ns1:cbSvcName>/BCC/PipelineSVC/NTLT/UseQnt/PL_DrctlyUseQnt</ns1:cbSvcName>
+        <ns1:cbFnName>retrieveDrctlyUseQntDtl</ns1:cbFnName>
+    </ns1:bizHeader>
+    <ns1:DrctlyUseQntListRetvOutDTO xmlns=""/>
+</ns1:DrctlyUseQntDtlRetvSO_service_response></soapenv:Body></soapenv:Envelope>
