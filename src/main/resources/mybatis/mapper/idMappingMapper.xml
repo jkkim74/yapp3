@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * idMappingMapper.xml (v3 - SNS 임시 ID 라이프사이클 대응)
+ * 
+ * SNS 임시 ID(SNS!XXXXX) / KT ID 매핑 조회 및 마이그레이션 전용 Mapper
+ * 
+ * ★ 중요: 이 namespace(mybatis.mapper.idmapping)는 
+ *          UserIdResolvingInterceptor에서 제외됩니다.
+ *          (순환 참조 방지: Interceptor 내부에서 이 쿼리를 호출하므로)
+ * 
+ * ★ 테이블 구조:
+ *    TB_USER    (PK=CNTR_NO): KT_ID, CREDENTIAL_ID 컬럼 추가
+ *    TB_USER_KT (PK=USER_ID): CREDENTIAL_ID, SNS_TEMP_ID 컬럼 추가
+ *    두 테이블은 CREDENTIAL_ID로 연결
+ * 
+ * ★ v3 추가:
+ *    - SNS_TEMP_ID 기반 조회 쿼리
+ *    - TB_USER_KT PK 변경(DELETE+INSERT) 쿼리
+ *    - TB_USER_KT 종속 테이블 일괄 변경 쿼리
+ * 
+ * @author AI Assistant
+ * @since 2026.03.19
+ * @version 3.0 (SNS 임시 ID 라이프사이클 대응)
+ * Copyright (c) 2024 KTDS, Inc. All Rights Reserved
+-->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mybatis.mapper.idmapping">
+
+	<!-- ================================================================ -->
+	<!-- [조회] Interceptor에서 호출하는 ID 매핑 쿼리들                     -->
+	<!-- ================================================================ -->
+
+	<!--
+	============================================================
+	getKtIdBySnsTemporaryId: SNS 임시 ID로 전환된 KT ID 조회 (v3 신규)
+	============================================================
+	
+	KT ID 전환 완료 시 TB_USER_KT.SNS_TEMP_ID에 이전 임시 ID가 저장됩니다.
+	이 쿼리는 SNS 임시 ID로 해당 KT ID(현재 USER_ID)를 찾습니다.
+	
+	[실행 예시]
+	  TB_USER_KT:
+	  +──────────────+────────────────────+──────────┐
+	  │ USER_ID(PK)  │ SNS_TEMP_ID        │JOIN_STATUS│
+	  +──────────────+────────────────────+──────────┤
+	  │ honggildong  │ SNS!S0001_abc123   │ G0001    │
+	  +──────────────+────────────────────+──────────┘
+	  
+	  getKtIdBySnsTemporaryId("SNS!S0001_abc123")
+	  → USER_ID = "honggildong" 반환
+	-->
+	<select id="getKtIdBySnsTemporaryId" parameterType="String" resultType="String">
+		/* mybatis.mapper.idmapping.getKtIdBySnsTemporaryId : SNS 임시 ID로 전환된 KT ID를 조회한다. */
+		SELECT USER_ID AS KT_ID
+		FROM TB_USER_KT
+		WHERE SNS_TEMP_ID = #{userId}
+		AND JOIN_STATUS = 'G0001'
+		LIMIT 1
+	</select>
+
+	<!--
+	============================================================
+	getKtIdByCredentialIdFallback: CREDENTIAL_ID 기반 폴백 조회 (v3 신규)
+	============================================================
+	
+	TB_USER_KT에서 해당 userId(SNS 임시 ID 또는 기타)의 CREDENTIAL_ID를 찾고,
+	같은 CREDENTIAL_ID를 가진 TB_USER 레코드에서 KT_ID를 조회합니다.
+	
+	SNS_TEMP_ID 조회가 실패했을 때의 2차 폴백입니다.
+	-->
+	<select id="getKtIdByCredentialIdFallback" parameterType="String" resultType="String">
+		/* mybatis.mapper.idmapping.getKtIdByCredentialIdFallback : CREDENTIAL_ID 기반 폴백으로 KT_ID를 조회한다. */
+		SELECT A.KT_ID
+		FROM TB_USER A
+		WHERE A.CREDENTIAL_ID = (
+			SELECT B.CREDENTIAL_ID
+			FROM TB_USER_KT B
+			WHERE (B.USER_ID = #{userId} OR B.SNS_TEMP_ID = #{userId})
+			AND B.CREDENTIAL_ID IS NOT NULL
+			LIMIT 1
+		)
+		AND A.KT_ID IS NOT NULL
+		AND A.KT_ID != ''
+		LIMIT 1
+	</select>
+
+	<!--
+	============================================================
+	getKtIdByUserId: TB_USER에서 USER_ID 기반 KT_ID 조회 (v2 호환)
+	============================================================
+	
+	TB_USER.USER_ID에 저장된 ID로 같은 CREDENTIAL_ID 그룹의 KT_ID를 조회.
+	(회선 사용자가 KT ID를 가진 경우에 사용)
+	-->
+	<select id="getKtIdByUserId" parameterType="String" resultType="String">
+		/* mybatis.mapper.idmapping.getKtIdByUserId : USER_ID로 TB_USER에서 KT_ID를 조회한다. */
+		SELECT A.KT_ID
+		FROM TB_USER A
+		WHERE A.CREDENTIAL_ID = (
+			SELECT B.CREDENTIAL_ID 
+			FROM TB_USER B 
+			WHERE B.USER_ID = #{userId}
+			LIMIT 1
+		)
+		AND A.KT_ID IS NOT NULL
+		AND A.KT_ID != ''
+		LIMIT 1
+	</select>
+
+	<!--
+	============================================================
+	getKtIdByCredentialId: credential_id 직접 지정 조회
+	============================================================
+	-->
+	<select id="getKtIdByCredentialId" parameterType="String" resultType="String">
+		/* mybatis.mapper.idmapping.getKtIdByCredentialId : credential_id로 TB_USER에서 KT_ID를 조회한다. */
+		SELECT KT_ID
+		FROM TB_USER
+		WHERE CREDENTIAL_ID = #{credentialId}
+		AND KT_ID IS NOT NULL
+		AND KT_ID != ''
+		LIMIT 1
+	</select>
+
+	<!--
+	============================================================
+	getOldSnsIdByCredentialId: credential_id로 기존 SNS 임시 ID 조회 (v3)
+	============================================================
+	
+	KT ID 마이그레이션 시, 기존 SNS 임시 ID를 찾기 위해 사용합니다.
+	TB_USER_KT에서 CREDENTIAL_ID로 SNS_TEMP_ID 또는 SNS! 접두사 USER_ID를 찾습니다.
+	-->
+	<select id="getOldSnsIdByCredentialId" parameterType="String" resultType="String">
+		/* mybatis.mapper.idmapping.getOldSnsIdByCredentialId : credential_id로 기존 SNS 임시 ID를 조회한다. */
+		SELECT 
+			CASE 
+				WHEN SNS_TEMP_ID IS NOT NULL THEN SNS_TEMP_ID
+				WHEN USER_ID LIKE 'SNS!%' THEN USER_ID
+				ELSE USER_ID
+			END AS OLD_SNS_ID
+		FROM TB_USER_KT
+		WHERE CREDENTIAL_ID = #{credentialId}
+		LIMIT 1
+	</select>
+
+	<!--
+	============================================================
+	checkKtIdExists: KT ID 레코드 존재 여부 확인 (v3)
+	============================================================
+	-->
+	<select id="checkKtIdExists" parameterType="String" resultType="int">
+		/* mybatis.mapper.idmapping.checkKtIdExists : KT ID 레코드 존재 여부를 확인한다. */
+		SELECT COUNT(*)
+		FROM TB_USER_KT
+		WHERE USER_ID = #{ktId}
+	</select>
+
+	<!-- ================================================================ -->
+	<!-- [마이그레이션] KT ID 전환 시 실행되는 쿼리들                       -->
+	<!-- (KtIdMigrationService에서 호출)                                   -->
+	<!-- ================================================================ -->
+
+	<!--
+	============================================================
+	migrateUserKtRecord: TB_USER_KT PK 변경 (DELETE + INSERT) (v3 핵심)
+	============================================================
+	
+	★ PK(USER_ID)는 UPDATE로 변경 불가하므로
+	   기존 레코드의 데이터를 복사하면서 새 PK로 INSERT한 뒤
+	   기존 레코드를 DELETE합니다.
+	
+	★ INSERT ... SELECT 패턴으로 한 번의 쿼리로 처리:
+	   1) 기존 레코드의 모든 컬럼 값을 SELECT
+	   2) USER_ID만 새 KT ID로 교체하여 INSERT
+	   3) 추가 컬럼(CREDENTIAL_ID, SNS_TEMP_ID, MEM_STATUS) 갱신
+	   4) 기존 SNS 레코드 DELETE
+	
+	★ 반드시 @Transactional 내에서 실행되어야 함!
+	-->
+	<update id="migrateUserKtRecord" parameterType="Map">
+		/* mybatis.mapper.idmapping.migrateUserKtRecord : TB_USER_KT PK 변경 (v3) */
+		
+		/* Step 1: 새 KT ID로 INSERT (기존 데이터 복사) */
+		INSERT INTO TB_USER_KT (
+			USER_ID, MOBILE_NO, EMAIL, GENDER, BIRTH_DAY,
+			PUSH_RCV_YN, MKT_RCV_YN, JOIN_STATUS, MEM_STATUS,
+			OS_TP, DUP_ID, APP_VRSN, MKT_CHG_DT,
+			REG_DT, MOD_DT, NAME, KT_YN, MOBILE_CD,
+			CREDENTIAL_ID, SNS_TEMP_ID,
+			REVIEW_YN, REVIEW_REG_DT, PRF_FLAG, PRF_DT
+		)
+		SELECT
+			#{newKtId},                  /* USER_ID: 새 KT ID */
+			MOBILE_NO, EMAIL, GENDER, BIRTH_DAY,
+			PUSH_RCV_YN, MKT_RCV_YN, JOIN_STATUS, #{newMemStatus},
+			OS_TP, DUP_ID, APP_VRSN, MKT_CHG_DT,
+			REG_DT, NOW(), NAME, KT_YN, MOBILE_CD,
+			#{credentialId},             /* CREDENTIAL_ID: IAMUI 발급 */
+			#{snsTemporaryId},           /* SNS_TEMP_ID: 이전 임시 ID 이력 */
+			REVIEW_YN, REVIEW_REG_DT, PRF_FLAG, PRF_DT
+		FROM TB_USER_KT
+		WHERE USER_ID = #{oldSnsId};
+		
+		/* Step 2: 기존 SNS 레코드 삭제 */
+		DELETE FROM TB_USER_KT WHERE USER_ID = #{oldSnsId}
+	</update>
+
+	<!--
+	============================================================
+	deleteSnsRecord: SNS 임시 레코드 삭제 (v3)
+	============================================================
+	KT ID 레코드가 이미 존재하는 경우, SNS 레코드만 삭제합니다.
+	-->
+	<delete id="deleteSnsRecord" parameterType="String">
+		/* mybatis.mapper.idmapping.deleteSnsRecord : SNS 임시 레코드를 삭제한다. */
+		DELETE FROM TB_USER_KT WHERE USER_ID = #{oldSnsId}
+	</delete>
+
+	<!--
+	============================================================
+	updateKtRecordWithSnsInfo: 기존 KT 레코드에 SNS 이력 갱신 (v3)
+	============================================================
+	KT ID 레코드가 이미 존재하는 경우, SNS_TEMP_ID와 CREDENTIAL_ID를 갱신합니다.
+	-->
+	<update id="updateKtRecordWithSnsInfo" parameterType="Map">
+		/* mybatis.mapper.idmapping.updateKtRecordWithSnsInfo : KT 레코드에 SNS 이력을 갱신한다. */
+		UPDATE TB_USER_KT 
+		SET 
+			SNS_TEMP_ID = #{snsTemporaryId},
+			CREDENTIAL_ID = COALESCE(#{credentialId}, CREDENTIAL_ID),
+			MOD_DT = NOW()
+		WHERE USER_ID = #{userId}
+	</update>
+
+	<!--
+	============================================================
+	TB_USER KT_ID 갱신 (v2 호환)
+	============================================================
+	-->
+	<update id="updateUserKtId" parameterType="Map">
+		/* mybatis.mapper.idmapping.updateUserKtId : TB_USER의 KT_ID를 갱신한다. */
+		UPDATE TB_USER 
+		SET 
+			KT_ID = #{newKtId},
+			MOD_DT = NOW()
+		WHERE CREDENTIAL_ID = #{credentialId}
+	</update>
+
+	<!--
+	============================================================
+	공용 테이블 USER_ID 일괄 변경 (v2 호환)
+	============================================================
+	-->
+	<update id="migrateUserId" parameterType="Map">
+		/* mybatis.mapper.idmapping.migrateUserId : 공용/종속 테이블 USER_ID 일괄 변경 */
+		UPDATE ${tableName}
+		SET USER_ID = #{newKtId}
+		WHERE USER_ID = #{oldSnsId}
+	</update>
+
+	<!--
+	============================================================
+	TB_PREFERENCE_INFO_KT의 KT_ID 컬럼 변경 (v3 신규)
+	============================================================
+	TB_PREFERENCE_INFO_KT는 USER_ID가 아닌 KT_ID 컬럼을 사용
+	-->
+	<update id="migrateKtIdColumn" parameterType="Map">
+		/* mybatis.mapper.idmapping.migrateKtIdColumn : KT_ID 컬럼 일괄 변경 */
+		UPDATE ${tableName}
+		SET KT_ID = #{newKtId}
+		WHERE KT_ID = #{oldSnsId}
+	</update>
+
+	<!--
+	============================================================
+	RECV_USER_ID 컬럼 변경 (v2 호환)
+	============================================================
+	-->
+	<update id="migrateRecvUserId" parameterType="Map">
+		/* mybatis.mapper.idmapping.migrateRecvUserId : RECV_USER_ID 일괄 변경 */
+		UPDATE ${tableName}
+		SET RECV_USER_ID = #{newKtId}
+		WHERE RECV_USER_ID = #{oldSnsId}
+	</update>
+
+	<!--
+	============================================================
+	getSnsIdByKtId: KT ID로 기존 SNS ID 역조회 (v2 호환)
+	============================================================
+	-->
+	<select id="getSnsIdByKtId" parameterType="String" resultType="String">
+		/* mybatis.mapper.idmapping.getSnsIdByKtId : KT_ID로 이전 SNS_ID를 조회한다. */
+		SELECT SNS_TEMP_ID
+		FROM TB_USER_KT
+		WHERE USER_ID = #{ktId}
+		AND SNS_TEMP_ID IS NOT NULL
+		LIMIT 1
+	</select>
+
+</mapper>

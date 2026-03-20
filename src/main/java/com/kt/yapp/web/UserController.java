@@ -42,6 +42,8 @@ import com.kt.yapp.domain.SvcOut;
 import com.kt.yapp.domain.TermsAgree;
 import com.kt.yapp.domain.UserInfo;
 import com.kt.yapp.domain.UserPass;
+import com.kt.yapp.client.IamUiApiClient;
+import com.kt.yapp.domain.req.IamUiLogoutReq;
 import com.kt.yapp.domain.req.UserInfoReq;
 import com.kt.yapp.domain.req.UserInfoSettingReq;
 import com.kt.yapp.domain.req.UserPreferenceReq;
@@ -127,6 +129,9 @@ public class UserController
 	@Autowired
 	private UserKtService userKtService;
 
+	@Autowired
+	private IamUiApiClient iamUiApiClient;
+
 	private static final String AUTHREQBYKEY = "/na/user/login/authreqbykey";
 	private static final String CBC = "114";
 
@@ -191,59 +196,117 @@ public class UserController
 		}
 
 		// 로그아웃 처리
-		logout("", req);
+		logout("", null, req);
 
 		return new ResultInfo<>();
 	}
 
+	// ──────────────────────────────────────────────────────────────────────────
+	// BE-LGOUT-001 : 로그아웃 API 수정 (IAMUI 세션 종료 추가)
+	// ──────────────────────────────────────────────────────────────────────────
+
+	/**
+	 * 로그아웃 처리 (BE-LGOUT-001).
+	 *
+	 * <pre>
+	 * POST /user/logout
+	 *
+	 * ── 유지 로직 (AS-IS 변경 없음) ────────────────────────────────────────
+	 * ✔ snsType에 따른 SNS 연동정보 삭제
+	 * ✔ memStatus 분기별 디바이스 토큰 초기화
+	 *   (G0001: FCM/APNS 토큰 삭제 – updateDeviceTokenAll)
+	 *   (G0002: updateDeviceToken)
+	 *   (G0003: updateDeviceTokenKt)
+	 * ✔ SessionKeeper.logout(req) 호출
+	 * ✔ req.getSession().invalidate() 세션 무효화
+	 *
+	 * ── 추가 로직 (BE-LGOUT-001 신규) ──────────────────────────────────────
+	 * ✅ iamUiApiClient.logout(encTokenId) 호출
+	 *    - @RequestBody IamUiLogoutReq 의 encTokenId (선택)
+	 *    - encTokenId null/빈값 → IAMUI logout 스킵
+	 *    - try-catch: IAMUI logout 실패해도 YBOX 세션 정상 종료 (비차단)
+	 *
+	 * ── 하위 호환 ──────────────────────────────────────────────────────────
+	 * snsType은 기존 @RequestParam 방식 유지.
+	 * encTokenId는 Body에서 선택 수신 (없어도 로그아웃 정상 동작).
+	 * </pre>
+	 *
+	 * @param snsType     SNS 유형 (선택, AS-IS 파라미터 유지)
+	 * @param logoutReq   IAMUI 로그아웃 요청 VO { encTokenId } (선택)
+	 * @param req         HttpServletRequest
+	 * @return ResultInfo (빈 성공 응답)
+	 * @throws Exception  로그아웃 처리 오류
+	 */
 	@RequestMapping(value="/user/logout", method = RequestMethod.POST)
-	@ApiOperation(value="로그아웃 처리")
+	@ApiOperation(value = "로그아웃 처리 (BE-LGOUT-001)",
+	              notes  = "IAMUI 통합 로그인 사용자: Body에 encTokenId 포함하면 IAMUI 세션도 함께 종료")
 	@ApiImplicitParams({
-			@ApiImplicitParam(name="ysid", value="세션ID", dataType="string", paramType="header"),@ApiImplicitParam(name="autoLogin", value="자동로그인", dataType="string", paramType="header"), @ApiImplicitParam(name="osTp", value="단말 OS 유형(G0001: Android, G0002: IOS)", dataType="string", paramType="header"), @ApiImplicitParam(name="appVrsn", value="앱 버전", dataType="string", paramType="header")
+			@ApiImplicitParam(name = "ysid",      value = "세션ID",                                       dataType = "string", paramType = "header"),
+			@ApiImplicitParam(name = "autoLogin", value = "자동로그인",                                    dataType = "string", paramType = "header"),
+			@ApiImplicitParam(name = "osTp",      value = "단말 OS 유형(G0001: Android, G0002: iOS)",     dataType = "string", paramType = "header"),
+			@ApiImplicitParam(name = "appVrsn",   value = "앱 버전",                                      dataType = "string", paramType = "header")
 	})
-	public ResultInfo<String> logout (String snsType, HttpServletRequest req) throws Exception
-	{
+	public ResultInfo<String> logout(
+			String snsType,
+			@RequestBody(required = false) IamUiLogoutReq logoutReq,
+			HttpServletRequest req) throws Exception {
 
-
-		String cntrNo = SessionKeeper.getCntrNo(req);
+		// ── ① 세션 데이터 조회 ─────────────────────────────────────────────
+		String cntrNo    = SessionKeeper.getCntrNo(req);
 		String memStatus = "";
-		String userId = null;
+		String userId    = null;
 
-		if(SessionKeeper.getSdata(req) != null){
+		if (SessionKeeper.getSdata(req) != null) {
 			memStatus = SessionKeeper.getSdata(req).getMemStatus();
-			userId = SessionKeeper.getSdata(req).getUserId();
+			userId    = SessionKeeper.getSdata(req).getUserId();
 		}
 
-		logger.info("==============================================================");
-		logger.info("/user/logout -> memStatus : "+memStatus);
-		logger.info("/user/logout -> cntrNo : "+cntrNo);
-		logger.info("/user/logout -> userId : "+userId);
-		logger.info("==============================================================");
+		logger.info("========================================================");
+		logger.info("[BE-LGOUT-001] /user/logout – START");
+		logger.info("[BE-LGOUT-001] memStatus : {}", memStatus);
+		logger.info("[BE-LGOUT-001] cntrNo    : {}", cntrNo);
+		logger.info("[BE-LGOUT-001] userId    : {}", userId);
+		logger.info("========================================================");
 
-		//SNS 로그인 연동정보 삭제
-		if(YappUtil.isNotEmpty(cntrNo)&&YappUtil.isNotEmpty(snsType)){
+		// ── ② SNS 로그인 연동정보 삭제 (AS-IS 유지) ───────────────────────
+		if (YappUtil.isNotEmpty(cntrNo) && YappUtil.isNotEmpty(snsType)) {
 			userService.deleteSnsInfo(snsType, cntrNo);
 		}
 
-		if(YappUtil.isEq(memStatus, "G0001")){
+		// ── ③ memStatus 분기별 디바이스 토큰 초기화 (AS-IS 유지) ──────────
+		if (YappUtil.isEq(memStatus, "G0001")) {
 
-			cmnService.updateDeviceTokenAll("", cntrNo, userId, "", "","");
+			cmnService.updateDeviceTokenAll("", cntrNo, userId, "", "", "");
 
-		}else if(YappUtil.isEq(memStatus, "G0002")){
+		} else if (YappUtil.isEq(memStatus, "G0002")) {
 
 			cmnService.updateDeviceToken("", cntrNo, "", "");
 
-		}else if(YappUtil.isEq(memStatus, "G0003")){
+		} else if (YappUtil.isEq(memStatus, "G0003")) {
 
-			cmnService.updateDeviceTokenKt("", userId, "", "","");
+			cmnService.updateDeviceTokenKt("", userId, "", "", "");
 
-		}else{
+		} else {
 
-			throw new YappAuthException("410","로그인 정보가 없습니다.");
+			throw new YappAuthException("410", "로그인 정보가 없습니다.");
 		}
 
+		// ── ④ IAMUI 세션 종료 (BE-LGOUT-001 추가) ─────────────────────────
+		// IAMUI 통합 로그인 사용자만 encTokenId 전달 → 비차단 호출
+		// 실패해도 YBOX 세션 로그아웃은 정상 처리
+		String encTokenId = (logoutReq != null) ? logoutReq.getEncTokenId() : null;
+		if (YappUtil.isNotEmpty(encTokenId)) {
+			logger.info("[BE-LGOUT-001] IAMUI logout 호출 – encTokenId: (masked)");
+			iamUiApiClient.logout(encTokenId);
+		} else {
+			logger.info("[BE-LGOUT-001] IAMUI logout 스킵 – encTokenId 없음 (AS-IS 로그인 방식)");
+		}
+
+		// ── ⑤ YBOX 세션 무효화 (AS-IS 유지) ──────────────────────────────
 		SessionKeeper.logout(req);
 		req.getSession().invalidate();
+
+		logger.info("[BE-LGOUT-001] /user/logout – 완료");
 
 		return new ResultInfo<>();
 	}
