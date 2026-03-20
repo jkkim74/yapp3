@@ -42,6 +42,7 @@ import com.kt.yapp.domain.CustAgreeInfoResponse;
 import com.kt.yapp.domain.CustAgreeInfoResponseDetail;
 import com.kt.yapp.domain.CustAgreeInfoRetvListDTO;
 import com.kt.yapp.domain.CustAgreeInfoRetvListDtoDetail;
+import com.kt.yapp.domain.Oif265Response;
 import com.kt.yapp.domain.OwnAuth;
 import com.kt.yapp.domain.SendSmsLogInfo;
 import com.kt.yapp.domain.SmsContents;
@@ -130,6 +131,8 @@ public class ShubService
 	public String custAgreeInfoUrl;
 	@Value("${shub.custagreeinforegwthd.rest.url}")
 	public String custAgreeInfoChgUrl;
+	@Value("${shub.oif265.rest.url}")
+	public String oif265Url;
 	@Autowired
 	private AppEncryptUtils appEncryptUtils;
 	
@@ -535,6 +538,132 @@ public class ShubService
 		paramToken.setTokenId(tokenId);
 
 		SoapResponse188 resp = paramToken.execute();
+		return resp;
+	}
+
+	/**
+	 * OIF_265 getComLoginTokenIdNoCredtId – 공통로그인 암호화 토큰 복호화 (BE-CMN-003)
+	 *
+	 * <pre>
+	 * IAMUI WebView 공통로그인이 발급한 enc_token_id(encTokenId)를 KT API Link에 전달하여
+	 * 복호화된 token_id 및 사용자 정보(username, virtual_subscpn_type_cd 등)를 획득한다.
+	 *
+	 * ── API 기본 정보 ────────────────────────────────────────────
+	 *   API ID   : OIF_265
+	 *   Method   : POST
+	 *   Host     : ${shub.oif265.rest.url}
+	 *              (예) https://cus.api.kt.com/scap/v1.0/getComLoginTokenIdNoCredtId
+	 *   Auth     : Basic base64(connId:connPwd)   ← 기존 shub.conn.id/pwd 재사용
+	 *   Content-Type: application/json;charset=UTF-8
+	 *
+	 * ── 요청 Body ─────────────────────────────────────────────────
+	 *   {
+	 *     "request": {
+	 *       "enc_token_id": "{encTokenId}"
+	 *     }
+	 *   }
+	 *
+	 * ── 응답 Body (성공 시) ────────────────────────────────────────
+	 *   {
+	 *     "returncode"        : "1",
+	 *     "returndescription" : "Success",
+	 *     "sequenceno"        : "...",
+	 *     "transactionid"     : "...",
+	 *     "response": {
+	 *       "username"                : "KTIDks",  // 로그인 ID
+	 *       "virtual_subscpn_type_cd" : "01",      // 01=KT ID, 09=회선ID
+	 *       "token_id"                : "...",      // 복호화된 tokenId
+	 *       "token_expiry"            : "20261231235959",
+	 *       "phone_number"            : "01012345678",
+	 *       "list_of_ctn": { "ctn": ["01012345678"] }
+	 *     }
+	 *   }
+	 *
+	 * ── 오류코드 ──────────────────────────────────────────────────
+	 *   E0001 = 인증키 오류
+	 *
+	 * ── 예외 ──────────────────────────────────────────────────────
+	 *   returncode != "1"  → YappException("SHUB_MSG") 발생
+	 *   응답 null          → YappException("SHUB_MSG") 발생
+	 * </pre>
+	 *
+	 * @param encTokenId IAMUI 공통로그인이 발급한 암호화 토큰 (enc_token_id)
+	 * @return Oif265Response (token_id, username, virtual_subscpn_type_cd, phone_number 등 포함)
+	 * @throws Exception SHUB 연동 오류
+	 */
+	public Oif265Response callFn265(String encTokenId) throws Exception
+	{
+		logger.info("========================================================");
+		logger.info("[OIF_265] URL: " + oif265Url);
+		logger.info("[OIF_265] encTokenId 수신, 복호화 요청 시작");
+		logger.info("========================================================");
+
+		// ── 1. Authorization 헤더 구성 (기존 connId:connPwd 재사용) ──
+		String key = connId + ":" + connPwd;
+		String basicAuth = "Basic " + Base64Utils.encodeToString(key.getBytes("utf-8"));
+
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+		headers.add("Authorization", basicAuth);
+
+		// ── 2. 요청 Body 구성 ────────────────────────────────────────
+		// { "request": { "enc_token_id": "..." } }
+		Map<String, Object> requestBody = new HashMap<>();
+		Map<String, String> requestInner = new HashMap<>();
+		requestInner.put("enc_token_id", encTokenId);
+		requestBody.put("request", requestInner);
+
+		HttpEntity<Map<String, Object>> httpEntity = new HttpEntity<>(requestBody, headers);
+
+		// ── 3. REST 호출 ─────────────────────────────────────────────
+		RestTemplate restCall = new RestTemplate();
+		ResponseEntity<Oif265Response> response;
+		try {
+			response = restCall.postForEntity(oif265Url, httpEntity, Oif265Response.class);
+		} catch (Exception e) {
+			logger.error("[OIF_265] HTTP 통신 오류: {}", e.getMessage());
+			throw new YappException("SHUB_MSG", "",
+					cmnService.getMsg("ERR_IAMUI_TOKEN_SHUB"),
+					"[OIF_265] HTTP 오류: " + e.getMessage(), "");
+		}
+
+		// ── 4. 응답 검증 ─────────────────────────────────────────────
+		Oif265Response resp = (response != null) ? response.getBody() : null;
+
+		logger.info("========================================================");
+		logger.info("[OIF_265] returncode    : " + (resp != null ? resp.getReturncode()        : "NULL"));
+		logger.info("[OIF_265] description   : " + (resp != null ? resp.getReturndescription() : "NULL"));
+		logger.info("[OIF_265] sequenceno    : " + (resp != null ? resp.getSequenceno()        : "NULL"));
+		logger.info("[OIF_265] transactionid : " + (resp != null ? resp.getTransactionid()     : "NULL"));
+		logger.info("[OIF_265] token_id      : " + (resp != null ? resp.getTokenId()           : "NULL"));
+		logger.info("========================================================");
+
+		if (resp == null || !resp.isSuccess()) {
+			String retCode  = (resp != null) ? resp.getReturncode()        : "";
+			String retDesc  = (resp != null) ? resp.getReturndescription() : "";
+			String errCode  = (resp != null) ? resp.getErrorcode()         : "";
+			String errDesc  = (resp != null) ? resp.getErrordescription()  : "";
+			String txId     = (resp != null) ? resp.getTransactionid()     : "";
+			logger.error("[OIF_265] 실패 – returncode={}, errorcode={}, errDesc={}, transactionid={}",
+					retCode, errCode, errDesc, txId);
+			throw new YappException("SHUB_MSG",
+					YappUtil.isEmpty(errCode) ? retCode : errCode,
+					cmnService.getMsg("ERR_IAMUI_TOKEN_SHUB"),
+					"[OIF_265] " + (YappUtil.isEmpty(errDesc) ? retDesc : errDesc),
+					txId);
+		}
+
+		// ── 5. token_id 존재 검증 ────────────────────────────────────
+		if (YappUtil.isEmpty(resp.getTokenId())) {
+			logger.error("[OIF_265] token_id 미반환 – 응답 이상");
+			throw new YappException("SHUB_MSG", "",
+					cmnService.getMsg("ERR_IAMUI_TOKEN_SHUB"),
+					"[OIF_265] token_id 미반환", "");
+		}
+
+		logger.info("[OIF_265] tokenId 복호화 성공 – username={}, virtual_subscpn_type_cd={}",
+				resp.getUsername(), resp.getVirtualSubscpnTypeCd());
+
 		return resp;
 	}
 
